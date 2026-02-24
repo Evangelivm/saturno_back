@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum Role {
+  ADMIN
+  USUARIO
+}
+
+enum TipoFactura {
+  REPARACION_RECONSTRUCCION
+  TRANSPORTE
+  VENTA
+  ALQUILER
+  SERVICIO_SIN_GUIA
+}
+
+model User {
+  id               String            @id @default(uuid())
+  ruc              String            @unique @db.VarChar(11)
+  passwordHash     String            @map("password_hash") @db.VarChar(255)
+  nombreEmpresa    String?           @map("nombre_empresa") @db.VarChar(255)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.DateTime(0)
+  isActive         Boolean           @default(true) @map("is_active")
+  image            String?           @db.VarChar(500)
+  role             Role              @default(USUARIO)
+  auditLogs        AuditLog[]
+  comprobantes     Comprobante[]
+  sessions         Session[]
+  sunatCredentials SunatCredential[]
+  sunatTokens      SunatToken[]
+
+  @@index([ruc])
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique @db.VarChar(500)
+  expiresAt DateTime @map("expires_at") @db.DateTime(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(0)
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  userAgent String?  @map("user_agent") @db.Text
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("sessions")
+}
+
+model Comprobante {
+  id                    String    @id @default(uuid())
+  userId                String    @map("user_id")
+  numRuc                String    @map("num_ruc") @db.VarChar(11)
+  codComp               String    @map("cod_comp") @db.VarChar(2)
+  numeroSerie           String    @map("numero_serie") @db.VarChar(4)
+  numero                Int
+  fechaEmision          DateTime     @map("fecha_emision") @db.Date
+  tipoFactura           TipoFactura  @map("tipo_factura")
+  numeroOrden           String       @map("numero_orden") @db.VarChar(50)
+  monto                 Decimal?     @db.Decimal(10, 2)
+  codigoAlfanumerico    String    @unique @map("codigo_alfanumerico") @db.VarChar(10)
+  sunatSuccess          Boolean   @map("sunat_success")
+  sunatMessage          String?   @map("sunat_message") @db.Text
+  sunatEstadoCp         Int?      @map("sunat_estado_cp")
+  sunatEstadoRuc        String?   @map("sunat_estado_ruc") @db.VarChar(2)
+  sunatCondDomiRuc      String?   @map("sunat_cond_domi_ruc") @db.VarChar(2)
+  sunatObservaciones    Json?     @map("sunat_observaciones")
+  sunatErrorCode        String?   @map("sunat_error_code") @db.VarChar(50)
+  facturaFileId         String?   @map("factura_file_id") @db.VarChar(255)
+  facturaFileName       String?   @map("factura_file_name") @db.VarChar(500)
+  facturaUploadedAt     DateTime? @map("factura_uploaded_at")
+  xmlFileId             String?   @map("xml_file_id") @db.VarChar(255)
+  xmlFileName           String?   @map("xml_file_name") @db.VarChar(500)
+  xmlUploadedAt         DateTime? @map("xml_uploaded_at")
+  guiaFileId            String?   @map("guia_file_id") @db.VarChar(255)
+  guiaFileName          String?   @map("guia_file_name") @db.VarChar(500)
+  guiaUploadedAt        DateTime? @map("guia_uploaded_at") @db.DateTime(0)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.DateTime(0)
+  ordenCompraFileId     String?   @map("orden_compra_file_id") @db.VarChar(255)
+  ordenCompraFileName   String?   @map("orden_compra_file_name") @db.VarChar(500)
+  ordenCompraUploadedAt DateTime? @map("orden_compra_uploaded_at") @db.DateTime(0)
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([numRuc])
+  @@index([fechaEmision])
+  @@index([codigoAlfanumerico])
+  @@index([createdAt])
+  @@map("comprobantes")
+}
+
+model SunatCredential {
+  id           String       @id @default(uuid())
+  userId       String       @map("user_id")
+  clientId     String       @map("client_id") @db.VarChar(500)
+  clientSecret String       @map("client_secret") @db.VarChar(500)
+  appName      String?      @map("app_name") @db.VarChar(255)
+  appUrl       String?      @map("app_url") @db.VarChar(500)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.DateTime(0)
+  isActive     Boolean      @default(true) @map("is_active")
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sunatTokens  SunatToken[]
+
+  @@unique([userId, clientId])
+  @@index([userId])
+  @@map("sunat_credentials")
+}
+
+model SunatToken {
+  id           String          @id @default(uuid())
+  userId       String          @map("user_id")
+  credentialId String          @map("credential_id")
+  accessToken  String          @map("access_token") @db.Text
+  tokenType    String?         @map("token_type") @db.VarChar(50)
+  expiresAt    DateTime        @map("expires_at") @db.DateTime(0)
+  createdAt    DateTime        @default(now()) @map("created_at") @db.DateTime(0)
+  credential   SunatCredential @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, credentialId])
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([credentialId], map: "sunat_tokens_credential_id_fkey")
+  @@map("sunat_tokens")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  userId       String?  @map("user_id")
+  action       String   @db.VarChar(100)
+  resourceType String?  @map("resource_type") @db.VarChar(50)
+  resourceId   String?  @map("resource_id")
+  metadata     Json?
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
+  userAgent    String?  @map("user_agent") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(0)
+  user         User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

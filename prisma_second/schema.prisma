@@ -1,0 +1,951 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/prisma-second-client"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model bancos {
+  id    Int     @id @default(autoincrement())
+  banco String? @db.VarChar(255)
+}
+
+model clientes2024 {
+  id                        Int       @id @default(autoincrement())
+  numRuc                    String?   @db.VarChar(50)
+  codComp                   String?   @db.VarChar(50)
+  numeroSerie               String?   @db.VarChar(50)
+  numero                    String?   @db.VarChar(50)
+  fechaEmision              String?   @db.VarChar(50)
+  monto                     String?   @db.VarChar(50)
+  moneda                    String?   @db.VarChar(50)
+  estadoCp                  String?   @db.VarChar(50)
+  estadoRuc                 String?   @db.VarChar(50)
+  condDomiRuc               String?   @db.VarChar(50)
+  factdoc                   String?   @db.VarChar(255)
+  xmldoc                    String?   @db.VarChar(255)
+  guiadoc                   String?   @db.VarChar(255)
+  pedidodoc                 String?   @db.VarChar(255)
+  conta_numRuc              String?   @db.VarChar(50)
+  conta_codComp             String?   @db.VarChar(50)
+  conta_NumeroSerie         String?   @db.VarChar(50)
+  conta_numero              String?   @db.VarChar(50)
+  conta_fechaEmision        String?   @db.VarChar(50)
+  conta_monto               String?   @db.VarChar(50)
+  conta_estadoCp            String?   @db.VarChar(50)
+  conta_estadoRuc           String?   @db.VarChar(50)
+  conta_condDomiRuc         String?   @db.VarChar(50)
+  conta_validador_general   String?   @db.VarChar(50)
+  stats                     String?   @db.VarChar(50)
+  guia_remi_doc1            String?   @db.VarChar(50)
+  guia_remi_doc2            String?   @db.VarChar(50)
+  guia_remi_doc3            String?   @db.VarChar(50)
+  guia_remi_doc4            String?   @db.VarChar(50)
+  orden_compra              String?   @db.VarChar(50)
+  orden_servicio            String?   @db.VarChar(50)
+  estado_contabilidad       String?   @db.VarChar(50)
+  estado_tesoreria          String?   @db.VarChar(50)
+  fecha_pago_tesoreria      DateTime? @db.Date
+  voucher_deposito          String?   @db.VarChar(50)
+  condPago                  String?   @db.VarChar(50)
+  numeroSerial              String?   @db.VarChar(50)
+  fecha_estimada_pago       DateTime? @db.Date
+  fecha_ingreso_sistema     DateTime? @db.Timestamp(0)
+  tipo_servicio_conta       String?   @db.VarChar(50)
+  ordenes_pago              String?   @db.VarChar(50)
+  multipago_unica_empresa   String?   @db.VarChar(255)
+  multipago_varias_empresas String?   @db.VarChar(255)
+  estado_proceso_multipago  String?   @db.VarChar(255)
+  nombre_empresa            String?   @db.VarChar(255)
+  selector_multipago        String?   @db.VarChar(255)
+  fecha_multipagos          DateTime? @db.Date
+  fecha_vencimiento         DateTime? @db.Date
+  estado_proceso_tesoreria  String?   @db.VarChar(255)
+  observaciones_escritas    String?   @db.Text
+  numero_planilla_tesoreria String?   @db.VarChar(100)
+  fecha_proceso_planilla    DateTime? @db.Date
+  tipo_facturacion          Int?
+  numero_orden_compra       String?   @db.VarChar(50)
+}
+
+model clientes2024_CONTADO2024 {
+  id                        Int       @id @default(autoincrement())
+  numRuc                    String?   @db.VarChar(50)
+  codComp                   String?   @db.VarChar(50)
+  numeroSerie               String?   @db.VarChar(50)
+  numero                    String?   @db.VarChar(50)
+  fechaEmision              String?   @db.VarChar(50)
+  monto                     String?   @db.VarChar(50)
+  moneda                    String?   @db.VarChar(50)
+  estadoCp                  String?   @db.VarChar(50)
+  estadoRuc                 String?   @db.VarChar(50)
+  condDomiRuc               String?   @db.VarChar(50)
+  factdoc                   String?   @db.VarChar(255)
+  xmldoc                    String?   @db.VarChar(255)
+  guiadoc                   String?   @db.VarChar(255)
+  pedidodoc                 String?   @db.VarChar(255)
+  conta_numRuc              String?   @db.VarChar(50)
+  conta_codComp             String?   @db.VarChar(50)
+  conta_NumeroSerie         String?   @db.VarChar(50)
+  conta_numero              String?   @db.VarChar(50)
+  conta_fechaEmision        String?   @db.VarChar(50)
+  conta_monto               String?   @db.VarChar(50)
+  conta_estadoCp            String?   @db.VarChar(50)
+  conta_estadoRuc           String?   @db.VarChar(50)
+  conta_condDomiRuc         String?   @db.VarChar(50)
+  conta_validador_general   String?   @db.VarChar(50)
+  stats                     String?   @db.VarChar(50)
+  guia_remi_doc1            String?   @db.VarChar(50)
+  guia_remi_doc2            String?   @db.VarChar(50)
+  guia_remi_doc3            String?   @db.VarChar(50)
+  guia_remi_doc4            String?   @db.VarChar(50)
+  orden_compra              String?   @db.VarChar(50)
+  orden_servicio            String?   @db.VarChar(50)
+  estado_contabilidad       String?   @db.VarChar(50)
+  estado_tesoreria          String?   @db.VarChar(50)
+  fecha_pago_tesoreria      DateTime? @db.Date
+  voucher_deposito          String?   @db.VarChar(50)
+  condPago                  String?   @db.VarChar(50)
+  numeroSerial              String?   @db.VarChar(50)
+  fecha_estimada_pago       DateTime? @db.Date
+  fecha_ingreso_sistema     DateTime? @db.Timestamp(0)
+  tipo_servicio_conta       String?   @db.VarChar(50)
+  ordenes_pago              String?   @db.VarChar(50)
+  multipago_unica_empresa   String?   @db.VarChar(255)
+  multipago_varias_empresas String?   @db.VarChar(255)
+  estado_proceso_multipago  String?   @db.VarChar(255)
+  nombre_empresa            String?   @db.VarChar(255)
+  selector_multipago        String?   @db.VarChar(255)
+  fecha_multipagos          DateTime? @db.Date
+  fecha_vencimiento         DateTime? @db.Date
+  estado_proceso_tesoreria  String?   @db.VarChar(255)
+  observaciones_escritas    String?   @db.Text
+  numero_planilla_tesoreria String?   @db.VarChar(100)
+  fecha_proceso_planilla    DateTime? @db.Date
+}
+
+model clientes2024_PRUEBAS_copy1 {
+  id                        Int       @id @default(autoincrement())
+  numRuc                    String?   @db.VarChar(50)
+  codComp                   String?   @db.VarChar(50)
+  numeroSerie               String?   @db.VarChar(50)
+  numero                    String?   @db.VarChar(50)
+  fechaEmision              String?   @db.VarChar(50)
+  monto                     String?   @db.VarChar(50)
+  moneda                    String?   @db.VarChar(50)
+  estadoCp                  String?   @db.VarChar(50)
+  estadoRuc                 String?   @db.VarChar(50)
+  condDomiRuc               String?   @db.VarChar(50)
+  factdoc                   String?   @db.VarChar(255)
+  xmldoc                    String?   @db.VarChar(255)
+  guiadoc                   String?   @db.VarChar(255)
+  pedidodoc                 String?   @db.VarChar(255)
+  conta_numRuc              String?   @db.VarChar(50)
+  conta_codComp             String?   @db.VarChar(50)
+  conta_NumeroSerie         String?   @db.VarChar(50)
+  conta_numero              String?   @db.VarChar(50)
+  conta_fechaEmision        String?   @db.VarChar(50)
+  conta_monto               String?   @db.VarChar(50)
+  conta_estadoCp            String?   @db.VarChar(50)
+  conta_estadoRuc           String?   @db.VarChar(50)
+  conta_condDomiRuc         String?   @db.VarChar(50)
+  conta_validador_general   String?   @db.VarChar(50)
+  stats                     String?   @db.VarChar(50)
+  guia_remi_doc1            String?   @db.VarChar(50)
+  guia_remi_doc2            String?   @db.VarChar(50)
+  guia_remi_doc3            String?   @db.VarChar(50)
+  guia_remi_doc4            String?   @db.VarChar(50)
+  orden_compra              String?   @db.VarChar(50)
+  orden_servicio            String?   @db.VarChar(50)
+  estado_contabilidad       String?   @db.VarChar(50)
+  estado_tesoreria          String?   @db.VarChar(50)
+  fecha_pago_tesoreria      DateTime? @db.Date
+  voucher_deposito          String?   @db.VarChar(50)
+  condPago                  String?   @db.VarChar(50)
+  numeroSerial              String?   @db.VarChar(50)
+  fecha_estimada_pago       DateTime? @db.Date
+  fecha_ingreso_sistema     DateTime? @db.Timestamp(0)
+  tipo_servicio_conta       String?   @db.VarChar(50)
+  ordenes_pago              String?   @db.VarChar(50)
+  multipago_unica_empresa   String?   @db.VarChar(255)
+  multipago_varias_empresas String?   @db.VarChar(255)
+  estado_proceso_multipago  String?   @db.VarChar(255)
+  nombre_empresa            String?   @db.VarChar(255)
+  selector_multipago        String?   @db.VarChar(255)
+  fecha_multipagos          DateTime? @db.Date
+  fecha_vencimiento         DateTime? @db.Date
+  estado_proceso_tesoreria  String?   @db.VarChar(255)
+  observaciones_escritas    String?   @db.Text
+  numero_planilla_tesoreria String?   @db.VarChar(100)
+  fecha_proceso_planilla    DateTime? @db.Date
+}
+
+model clientes2024_REVISION {
+  id                        Int       @id @default(autoincrement())
+  numRuc                    String?   @db.VarChar(50)
+  codComp                   String?   @db.VarChar(50)
+  numeroSerie               String?   @db.VarChar(50)
+  numero                    String?   @db.VarChar(50)
+  fechaEmision              String?   @db.VarChar(50)
+  monto                     String?   @db.VarChar(50)
+  moneda                    String?   @db.VarChar(50)
+  estadoCp                  String?   @db.VarChar(50)
+  estadoRuc                 String?   @db.VarChar(50)
+  condDomiRuc               String?   @db.VarChar(50)
+  factdoc                   String?   @db.VarChar(255)
+  xmldoc                    String?   @db.VarChar(255)
+  guiadoc                   String?   @db.VarChar(255)
+  pedidodoc                 String?   @db.VarChar(255)
+  conta_numRuc              String?   @db.VarChar(50)
+  conta_codComp             String?   @db.VarChar(50)
+  conta_NumeroSerie         String?   @db.VarChar(50)
+  conta_numero              String?   @db.VarChar(50)
+  conta_fechaEmision        String?   @db.VarChar(50)
+  conta_monto               String?   @db.VarChar(50)
+  conta_estadoCp            String?   @db.VarChar(50)
+  conta_estadoRuc           String?   @db.VarChar(50)
+  conta_condDomiRuc         String?   @db.VarChar(50)
+  conta_validador_general   String?   @db.VarChar(50)
+  stats                     String?   @db.VarChar(50)
+  guia_remi_doc1            String?   @db.VarChar(50)
+  guia_remi_doc2            String?   @db.VarChar(50)
+  guia_remi_doc3            String?   @db.VarChar(50)
+  guia_remi_doc4            String?   @db.VarChar(50)
+  orden_compra              String?   @db.VarChar(50)
+  orden_servicio            String?   @db.VarChar(50)
+  estado_contabilidad       String?   @db.VarChar(50)
+  estado_tesoreria          String?   @db.VarChar(50)
+  fecha_pago_tesoreria      DateTime? @db.Date
+  voucher_deposito          String?   @db.VarChar(50)
+  condPago                  String?   @db.VarChar(50)
+  numeroSerial              String?   @db.VarChar(50)
+  fecha_estimada_pago       DateTime? @db.Date
+  fecha_ingreso_sistema     DateTime? @db.Timestamp(0)
+  tipo_servicio_conta       String?   @db.VarChar(50)
+  ordenes_pago              String?   @db.VarChar(50)
+  multipago_unica_empresa   String?   @db.VarChar(255)
+  multipago_varias_empresas String?   @db.VarChar(255)
+  estado_proceso_multipago  String?   @db.VarChar(255)
+  nombre_empresa            String?   @db.VarChar(255)
+  selector_multipago        String?   @db.VarChar(255)
+  fecha_multipagos          DateTime? @db.Date
+  fecha_vencimiento         DateTime? @db.Date
+  estado_proceso_tesoreria  String?   @db.VarChar(255)
+  observaciones_escritas    String?   @db.Text
+  numero_planilla_tesoreria String?   @db.VarChar(100)
+  fecha_proceso_planilla    DateTime? @db.Date
+}
+
+model clientes2024_contado2024 {
+  id                        Int       @id @default(autoincrement())
+  numRuc                    String?   @db.VarChar(50)
+  codComp                   String?   @db.VarChar(50)
+  numeroSerie               String?   @db.VarChar(50)
+  numero                    String?   @db.VarChar(50)
+  fechaEmision              String?   @db.VarChar(50)
+  monto                     String?   @db.VarChar(50)
+  moneda                    String?   @db.VarChar(50)
+  estadoCp                  String?   @db.VarChar(50)
+  estadoRuc                 String?   @db.VarChar(50)
+  condDomiRuc               String?   @db.VarChar(50)
+  factdoc                   String?   @db.VarChar(255)
+  xmldoc                    String?   @db.VarChar(255)
+  guiadoc                   String?   @db.VarChar(255)
+  pedidodoc                 String?   @db.VarChar(255)
+  conta_numRuc              String?   @db.VarChar(50)
+  conta_codComp             String?   @db.VarChar(50)
+  conta_NumeroSerie         String?   @db.VarChar(50)
+  conta_numero              String?   @db.VarChar(50)
+  conta_fechaEmision        String?   @db.VarChar(50)
+  conta_monto               String?   @db.VarChar(50)
+  conta_estadoCp            String?   @db.VarChar(50)
+  conta_estadoRuc           String?   @db.VarChar(50)
+  conta_condDomiRuc         String?   @db.VarChar(50)
+  conta_validador_general   String?   @db.VarChar(50)
+  stats                     String?   @db.VarChar(50)
+  guia_remi_doc1            String?   @db.VarChar(50)
+  guia_remi_doc2            String?   @db.VarChar(50)
+  guia_remi_doc3            String?   @db.VarChar(50)
+  guia_remi_doc4            String?   @db.VarChar(50)
+  orden_compra              String?   @db.VarChar(50)
+  orden_servicio            String?   @db.VarChar(50)
+  estado_contabilidad       String?   @db.VarChar(50)
+  estado_tesoreria          String?   @db.VarChar(50)
+  fecha_pago_tesoreria      DateTime? @db.Date
+  voucher_deposito          String?   @db.VarChar(50)
+  condPago                  String?   @db.VarChar(50)
+  numeroSerial              String?   @db.VarChar(50)
+  fecha_estimada_pago       DateTime? @db.Date
+  fecha_ingreso_sistema     DateTime? @db.Timestamp(0)
+  tipo_servicio_conta       String?   @db.VarChar(50)
+  ordenes_pago              String?   @db.VarChar(50)
+  multipago_unica_empresa   String?   @db.VarChar(255)
+  multipago_varias_empresas String?   @db.VarChar(255)
+  estado_proceso_multipago  String?   @db.VarChar(255)
+  nombre_empresa            String?   @db.VarChar(255)
+  selector_multipago        String?   @db.VarChar(255)
+  fecha_multipagos          DateTime? @db.Date
+  fecha_vencimiento         DateTime? @db.Date
+  estado_proceso_tesoreria  String?   @db.VarChar(255)
+  observaciones_escritas    String?   @db.Text
+  numero_planilla_tesoreria String?   @db.VarChar(100)
+  fecha_proceso_planilla    DateTime? @db.Date
+}
+
+model clientes2024_contado2024_copy1 {
+  id                        Int       @id @default(autoincrement())
+  numRuc                    String?   @db.VarChar(50)
+  codComp                   String?   @db.VarChar(50)
+  numeroSerie               String?   @db.VarChar(50)
+  numero                    String?   @db.VarChar(50)
+  fechaEmision              String?   @db.VarChar(50)
+  monto                     String?   @db.VarChar(50)
+  moneda                    String?   @db.VarChar(50)
+  estadoCp                  String?   @db.VarChar(50)
+  estadoRuc                 String?   @db.VarChar(50)
+  condDomiRuc               String?   @db.VarChar(50)
+  factdoc                   String?   @db.VarChar(255)
+  xmldoc                    String?   @db.VarChar(255)
+  guiadoc                   String?   @db.VarChar(255)
+  pedidodoc                 String?   @db.VarChar(255)
+  conta_numRuc              String?   @db.VarChar(50)
+  conta_codComp             String?   @db.VarChar(50)
+  conta_NumeroSerie         String?   @db.VarChar(50)
+  conta_numero              String?   @db.VarChar(50)
+  conta_fechaEmision        String?   @db.VarChar(50)
+  conta_monto               String?   @db.VarChar(50)
+  conta_estadoCp            String?   @db.VarChar(50)
+  conta_estadoRuc           String?   @db.VarChar(50)
+  conta_condDomiRuc         String?   @db.VarChar(50)
+  conta_validador_general   String?   @db.VarChar(50)
+  stats                     String?   @db.VarChar(50)
+  guia_remi_doc1            String?   @db.VarChar(50)
+  guia_remi_doc2            String?   @db.VarChar(50)
+  guia_remi_doc3            String?   @db.VarChar(50)
+  guia_remi_doc4            String?   @db.VarChar(50)
+  orden_compra              String?   @db.VarChar(50)
+  orden_servicio            String?   @db.VarChar(50)
+  estado_contabilidad       String?   @db.VarChar(50)
+  estado_tesoreria          String?   @db.VarChar(50)
+  fecha_pago_tesoreria      DateTime? @db.Date
+  voucher_deposito          String?   @db.VarChar(50)
+  condPago                  String?   @db.VarChar(50)
+  numeroSerial              String?   @db.VarChar(50)
+  fecha_estimada_pago       DateTime? @db.Date
+  fecha_ingreso_sistema     DateTime? @db.Timestamp(0)
+  tipo_servicio_conta       String?   @db.VarChar(50)
+  ordenes_pago              String?   @db.VarChar(50)
+  multipago_unica_empresa   String?   @db.VarChar(255)
+  multipago_varias_empresas String?   @db.VarChar(255)
+  estado_proceso_multipago  String?   @db.VarChar(255)
+  nombre_empresa            String?   @db.VarChar(255)
+  selector_multipago        String?   @db.VarChar(255)
+  fecha_multipagos          DateTime? @db.Date
+  fecha_vencimiento         DateTime? @db.Date
+  estado_proceso_tesoreria  String?   @db.VarChar(255)
+  observaciones_escritas    String?   @db.Text
+  numero_planilla_tesoreria String?   @db.VarChar(100)
+  fecha_proceso_planilla    DateTime? @db.Date
+}
+
+model clientes2024_copy1 {
+  id                        Int       @id @default(autoincrement())
+  numRuc                    String?   @db.VarChar(50)
+  codComp                   String?   @db.VarChar(50)
+  numeroSerie               String?   @db.VarChar(50)
+  numero                    String?   @db.VarChar(50)
+  fechaEmision              String?   @db.VarChar(50)
+  monto                     String?   @db.VarChar(50)
+  moneda                    String?   @db.VarChar(50)
+  estadoCp                  String?   @db.VarChar(50)
+  estadoRuc                 String?   @db.VarChar(50)
+  condDomiRuc               String?   @db.VarChar(50)
+  factdoc                   String?   @db.VarChar(255)
+  xmldoc                    String?   @db.VarChar(255)
+  guiadoc                   String?   @db.VarChar(255)
+  pedidodoc                 String?   @db.VarChar(255)
+  conta_numRuc              String?   @db.VarChar(50)
+  conta_codComp             String?   @db.VarChar(50)
+  conta_NumeroSerie         String?   @db.VarChar(50)
+  conta_numero              String?   @db.VarChar(50)
+  conta_fechaEmision        String?   @db.VarChar(50)
+  conta_monto               String?   @db.VarChar(50)
+  conta_estadoCp            String?   @db.VarChar(50)
+  conta_estadoRuc           String?   @db.VarChar(50)
+  conta_condDomiRuc         String?   @db.VarChar(50)
+  conta_validador_general   String?   @db.VarChar(50)
+  stats                     String?   @db.VarChar(50)
+  guia_remi_doc1            String?   @db.VarChar(50)
+  guia_remi_doc2            String?   @db.VarChar(50)
+  guia_remi_doc3            String?   @db.VarChar(50)
+  guia_remi_doc4            String?   @db.VarChar(50)
+  orden_compra              String?   @db.VarChar(50)
+  orden_servicio            String?   @db.VarChar(50)
+  estado_contabilidad       String?   @db.VarChar(50)
+  estado_tesoreria          String?   @db.VarChar(50)
+  fecha_pago_tesoreria      DateTime? @db.Date
+  voucher_deposito          String?   @db.VarChar(50)
+  condPago                  String?   @db.VarChar(50)
+  numeroSerial              String?   @db.VarChar(50)
+  fecha_estimada_pago       DateTime? @db.Date
+  fecha_ingreso_sistema     DateTime? @db.Timestamp(0)
+  tipo_servicio_conta       String?   @db.VarChar(50)
+  ordenes_pago              String?   @db.VarChar(50)
+  multipago_unica_empresa   String?   @db.VarChar(255)
+  multipago_varias_empresas String?   @db.VarChar(255)
+  estado_proceso_multipago  String?   @db.VarChar(255)
+  nombre_empresa            String?   @db.VarChar(255)
+  selector_multipago        String?   @db.VarChar(255)
+  fecha_multipagos          DateTime? @db.Date
+  fecha_vencimiento         DateTime? @db.Date
+  estado_proceso_tesoreria  String?   @db.VarChar(255)
+  observaciones_escritas    String?   @db.Text
+  numero_planilla_tesoreria String?   @db.VarChar(100)
+  fecha_proceso_planilla    DateTime? @db.Date
+  tipo_facturacion          Int?
+  numero_orden_compra       String?   @db.VarChar(50)
+}
+
+model clientes2024_correo {
+  id                      Int       @id @default(autoincrement())
+  numRuc                  String?   @db.VarChar(50)
+  codComp                 String?   @db.VarChar(50)
+  numeroSerie             String?   @db.VarChar(50)
+  numero                  String?   @db.VarChar(50)
+  fechaEmision            String?   @db.VarChar(50)
+  monto                   String?   @db.VarChar(50)
+  moneda                  String?   @db.VarChar(50)
+  estadoCp                String?   @db.VarChar(50)
+  estadoRuc               String?   @db.VarChar(50)
+  condDomiRuc             String?   @db.VarChar(50)
+  factdoc                 String?   @db.VarChar(50)
+  xmldoc                  String?   @db.VarChar(50)
+  guiadoc                 String?   @db.VarChar(50)
+  pedidodoc               String?   @db.VarChar(50)
+  conta_numRuc            String?   @db.VarChar(50)
+  conta_codComp           String?   @db.VarChar(50)
+  conta_NumeroSerie       String?   @db.VarChar(50)
+  conta_numero            String?   @db.VarChar(50)
+  conta_fechaEmision      String?   @db.VarChar(50)
+  conta_monto             String?   @db.VarChar(50)
+  conta_estadoCp          String?   @db.VarChar(50)
+  conta_estadoRuc         String?   @db.VarChar(50)
+  conta_condDomiRuc       String?   @db.VarChar(50)
+  conta_validador_general String?   @db.VarChar(50)
+  stats                   String?   @db.VarChar(50)
+  guia_remi_doc1          String?   @db.VarChar(50)
+  guia_remi_doc2          String?   @db.VarChar(50)
+  guia_remi_doc3          String?   @db.VarChar(50)
+  guia_remi_doc4          String?   @db.VarChar(50)
+  orden_compra            String?   @db.VarChar(50)
+  orden_servicio          String?   @db.VarChar(50)
+  estado_contabilidad     String?   @db.VarChar(50)
+  estado_tesoreria        String?   @db.VarChar(50)
+  fecha_pago_tesoreria    DateTime? @db.Date
+  voucher_deposito        String?   @db.VarChar(50)
+  condPago                String?   @db.VarChar(50)
+  numeroSerial            String?   @db.VarChar(50)
+  mensaje                 String?   @db.VarChar(255)
+  cabecera                String?   @db.VarChar(50)
+  email                   String?   @db.VarChar(50)
+}
+
+model clientes2024back {
+  id                        Int       @id @default(autoincrement())
+  numRuc                    String?   @db.VarChar(50)
+  codComp                   String?   @db.VarChar(50)
+  numeroSerie               String?   @db.VarChar(50)
+  numero                    String?   @db.VarChar(50)
+  fechaEmision              String?   @db.VarChar(50)
+  monto                     String?   @db.VarChar(50)
+  moneda                    String?   @db.VarChar(50)
+  estadoCp                  String?   @db.VarChar(50)
+  estadoRuc                 String?   @db.VarChar(50)
+  condDomiRuc               String?   @db.VarChar(50)
+  factdoc                   String?   @db.VarChar(255)
+  xmldoc                    String?   @db.VarChar(255)
+  guiadoc                   String?   @db.VarChar(255)
+  pedidodoc                 String?   @db.VarChar(255)
+  conta_numRuc              String?   @db.VarChar(50)
+  conta_codComp             String?   @db.VarChar(50)
+  conta_NumeroSerie         String?   @db.VarChar(50)
+  conta_numero              String?   @db.VarChar(50)
+  conta_fechaEmision        String?   @db.VarChar(50)
+  conta_monto               String?   @db.VarChar(50)
+  conta_estadoCp            String?   @db.VarChar(50)
+  conta_estadoRuc           String?   @db.VarChar(50)
+  conta_condDomiRuc         String?   @db.VarChar(50)
+  conta_validador_general   String?   @db.VarChar(50)
+  stats                     String?   @db.VarChar(50)
+  guia_remi_doc1            String?   @db.VarChar(50)
+  guia_remi_doc2            String?   @db.VarChar(50)
+  guia_remi_doc3            String?   @db.VarChar(50)
+  guia_remi_doc4            String?   @db.VarChar(50)
+  orden_compra              String?   @db.VarChar(50)
+  orden_servicio            String?   @db.VarChar(50)
+  estado_contabilidad       String?   @db.VarChar(50)
+  estado_tesoreria          String?   @db.VarChar(50)
+  fecha_pago_tesoreria      DateTime? @db.Date
+  voucher_deposito          String?   @db.VarChar(50)
+  condPago                  String?   @db.VarChar(50)
+  numeroSerial              String?   @db.VarChar(50)
+  fecha_estimada_pago       DateTime? @db.Date
+  fecha_ingreso_sistema     DateTime? @db.Timestamp(0)
+  tipo_servicio_conta       String?   @db.VarChar(50)
+  ordenes_pago              String?   @db.VarChar(50)
+  observaciones_escritas    String?   @db.Text
+  fecha_vencimiento         DateTime? @db.Date
+  numero_planilla_tesoreria String?   @db.VarChar(100)
+  fecha_proceso_planilla    DateTime? @db.Date
+}
+
+model clientes2024contado {
+  id                      Int       @id @default(autoincrement())
+  numRuc                  String?   @db.VarChar(50)
+  codComp                 String?   @db.VarChar(50)
+  numeroSerie             String?   @db.VarChar(50)
+  numero                  String?   @db.VarChar(50)
+  fechaEmision            String?   @db.VarChar(50)
+  monto                   String?   @db.VarChar(50)
+  moneda                  String?   @db.VarChar(50)
+  estadoCp                String?   @db.VarChar(50)
+  estadoRuc               String?   @db.VarChar(50)
+  condDomiRuc             String?   @db.VarChar(50)
+  factdoc                 String?   @db.VarChar(50)
+  xmldoc                  String?   @db.VarChar(50)
+  guiadoc                 String?   @db.VarChar(50)
+  pedidodoc               String?   @db.VarChar(50)
+  conta_numRuc            String?   @db.VarChar(50)
+  conta_codComp           String?   @db.VarChar(50)
+  conta_NumeroSerie       String?   @db.VarChar(50)
+  conta_numero            String?   @db.VarChar(50)
+  conta_fechaEmision      String?   @db.VarChar(50)
+  conta_monto             String?   @db.VarChar(50)
+  conta_estadoCp          String?   @db.VarChar(50)
+  conta_estadoRuc         String?   @db.VarChar(50)
+  conta_condDomiRuc       String?   @db.VarChar(50)
+  conta_validador_general String?   @db.VarChar(50)
+  stats                   String?   @db.VarChar(50)
+  guia_remi_doc1          String?   @db.VarChar(50)
+  guia_remi_doc2          String?   @db.VarChar(50)
+  guia_remi_doc3          String?   @db.VarChar(50)
+  guia_remi_doc4          String?   @db.VarChar(50)
+  orden_compra            String?   @db.VarChar(50)
+  orden_servicio          String?   @db.VarChar(50)
+  estado_contabilidad     String?   @db.VarChar(50)
+  estado_tesoreria        String?   @db.VarChar(50)
+  fecha_pago_tesoreria    DateTime? @db.Date
+  voucher_deposito        String?   @db.VarChar(200)
+  condPago                String?   @db.VarChar(50)
+  numeroSerial            String?   @db.VarChar(50)
+  fecha_estimada_pago     DateTime? @db.Date
+  fecha_ingreso_sistema   DateTime? @db.Timestamp(0)
+  tipo_servicio_conta     String?   @db.VarChar(50)
+  ordenes_pago            String?   @db.VarChar(50)
+  multipago_facturas      String?   @db.VarChar(255)
+  multipago_empresa       String?   @db.VarChar(255)
+  multipago_numeroserial  String?   @db.VarChar(255)
+  nombre_banco            String?   @db.VarChar(50)
+  priorizar_pago_logis    String?   @db.VarChar(255)
+}
+
+model clientes_correo {
+  id           Int       @id @default(autoincrement())
+  nombre       String?   @db.VarChar(50)
+  email        String?   @db.VarChar(50)
+  telefono     String?   @db.VarChar(50)
+  enviar_email String?   @db.VarChar(50)
+  fecha_nac    DateTime? @db.Date
+}
+
+model config_email {
+  id          Int     @id @default(autoincrement())
+  servidor    String? @db.VarChar(50)
+  usuario     String? @db.VarChar(50)
+  contrasena  String? @db.VarChar(50)
+  email       String? @db.VarChar(50)
+  tp_conexion String? @db.VarChar(50)
+  puerto      String? @db.VarChar(50)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model correlativos {
+  id                 Int      @id @default(autoincrement())
+  fecha              DateTime @unique(map: "fecha") @db.Date
+  ultimo_correlativo Int      @default(0)
+  updated_at         DateTime @default(now()) @db.Timestamp(0)
+
+  @@index([fecha], map: "idx_fecha")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model documentos {
+  id                 Int       @id @default(autoincrement())
+  correlativo        Int
+  ruc_cliente        String    @db.VarChar(11)
+  ruc_proveedor      String    @db.VarChar(11)
+  tipo_documento     String    @db.VarChar(2)
+  nro_documento      String    @db.VarChar(50)
+  cod_interno_doc    String?   @db.VarChar(50)
+  fecha_emision      DateTime  @db.Date
+  fecha_vencimiento  DateTime? @db.Date
+  fecha_confirmacion DateTime? @db.Date
+  importe            Decimal   @db.Decimal(15, 4)
+  mon                String    @db.VarChar(2)
+  nombre_archivo     String    @db.VarChar(100)
+  created_at         DateTime  @default(now()) @db.Timestamp(0)
+
+  @@index([correlativo], map: "idx_correlativo")
+  @@index([fecha_emision], map: "idx_fecha_emision")
+  @@index([nombre_archivo], map: "idx_nombre_archivo")
+  @@index([ruc_cliente], map: "idx_ruc_cliente")
+  @@index([ruc_proveedor], map: "idx_ruc_proveedor")
+}
+
+model estados {
+  estados Int     @id @default(autoincrement())
+  tipo    String? @db.VarChar(255)
+}
+
+model facturas_priorizadas {
+  id                      Int       @id @default(autoincrement())
+  numRuc                  String?   @db.VarChar(50)
+  codComp                 String?   @db.VarChar(50)
+  numeroSerie             String?   @db.VarChar(50)
+  numero                  String?   @db.VarChar(50)
+  fechaEmision            String?   @db.VarChar(50)
+  monto                   String?   @db.VarChar(50)
+  moneda                  String?   @db.VarChar(50)
+  estadoCp                String?   @db.VarChar(50)
+  estadoRuc               String?   @db.VarChar(50)
+  condDomiRuc             String?   @db.VarChar(50)
+  factdoc                 String?   @db.VarChar(50)
+  xmldoc                  String?   @db.VarChar(50)
+  guiadoc                 String?   @db.VarChar(50)
+  pedidodoc               String?   @db.VarChar(50)
+  conta_numRuc            String?   @db.VarChar(50)
+  conta_codComp           String?   @db.VarChar(50)
+  conta_NumeroSerie       String?   @db.VarChar(50)
+  conta_numero            String?   @db.VarChar(50)
+  conta_fechaEmision      String?   @db.VarChar(50)
+  conta_monto             String?   @db.VarChar(50)
+  conta_estadoCp          String?   @db.VarChar(50)
+  conta_estadoRuc         String?   @db.VarChar(50)
+  conta_condDomiRuc       String?   @db.VarChar(50)
+  conta_validador_general String?   @db.VarChar(50)
+  stats                   String?   @db.VarChar(50)
+  guia_remi_doc1          String?   @db.VarChar(50)
+  guia_remi_doc2          String?   @db.VarChar(50)
+  guia_remi_doc3          String?   @db.VarChar(50)
+  guia_remi_doc4          String?   @db.VarChar(50)
+  orden_compra            String?   @db.VarChar(50)
+  orden_servicio          String?   @db.VarChar(50)
+  estado_contabilidad     String?   @db.VarChar(50)
+  estado_tesoreria        String?   @db.VarChar(50)
+  fecha_pago_tesoreria    DateTime? @db.Date
+  voucher_deposito        String?   @db.VarChar(50)
+  condPago                String?   @db.VarChar(50)
+  numeroSerial            String?   @db.VarChar(50)
+  fecha_estimada_pago     DateTime? @db.Date
+  fecha_ingreso_sistema   DateTime? @db.Timestamp(0)
+  tipo_servicio_conta     String?   @db.VarChar(50)
+  ordenes_pago            String?   @db.VarChar(50)
+  priorizar_pago_logis    String?   @db.VarChar(50)
+  multipago_facturas      String?   @db.VarChar(255)
+  multipago_empresa       String?   @db.VarChar(255)
+  multipago_numeroserial  String?   @db.VarChar(255)
+  nombre_banco1           String?   @db.VarChar(50)
+  fecha_grupal            DateTime? @db.Date
+  nombre_banco            String?   @db.VarChar(255)
+}
+
+model key {
+  id Int @id
+}
+
+model observaciones {
+  id          Int     @id @default(autoincrement())
+  observacion String? @db.VarChar(255)
+}
+
+model oldsec_genusers {
+  login               String                @id @db.VarChar(255)
+  pswd                String                @db.VarChar(255)
+  name                String?               @db.VarChar(255)
+  email               String?               @db.VarChar(255)
+  active              String?               @db.VarChar(1)
+  activation_code     String?               @db.VarChar(32)
+  priv_admin          String?               @db.VarChar(1)
+  mfa                 String?               @db.VarChar(255)
+  picture             Bytes?
+  role                String?               @db.VarChar(128)
+  phone               String?               @db.VarChar(64)
+  pswd_last_updated   DateTime              @default(now()) @db.Timestamp(0)
+  sec_genusers_groups sec_genusers_groups[]
+}
+
+model pedidos {
+  id            Int     @id
+  codigo_pedido String? @db.VarChar(255)
+  monto         String? @db.VarChar(255)
+  rutas         rutas[]
+}
+
+model recaudo {
+  id             Int     @id
+  codigo_pedido  String? @db.VarChar(255)
+  monto          String? @db.VarChar(255)
+  monto_recaudo  String? @db.VarChar(255)
+  observacion    String? @db.VarChar(255)
+  estado_recaudo String? @db.VarChar(255)
+  rutas          rutas[]
+}
+
+model rutas {
+  id               Int      @id
+  nombre_ruta      String?  @db.VarChar(255)
+  operador_ruta    String?  @db.VarChar(255)
+  fecha_ruteo      String?  @db.VarChar(255)
+  ticket_asignados String?  @db.VarChar(255)
+  estado_ruta      String?  @db.VarChar(255)
+  pedidos_id       Int?
+  recaudo_id       Int?
+  cierre_ruta      String?  @db.VarChar(255)
+  pedidos          pedidos? @relation(fields: [pedidos_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "rutas_ibfk_1")
+  recaudo          recaudo? @relation(fields: [recaudo_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "rutas_ibfk_2")
+
+  @@index([pedidos_id], map: "pedidos_id")
+  @@index([recaudo_id], map: "recaudo_id")
+}
+
+model sc_log {
+  id            Int       @id @default(autoincrement())
+  inserted_date DateTime? @db.DateTime(0)
+  username      String    @db.VarChar(90)
+  application   String    @db.VarChar(255)
+  creator       String    @db.VarChar(30)
+  ip_user       String    @db.VarChar(255)
+  action        String    @db.VarChar(30)
+  description   String?   @db.Text
+}
+
+model sec_genapps {
+  app_name           String               @id @db.VarChar(128)
+  app_type           String?              @db.VarChar(255)
+  description        String?              @db.VarChar(255)
+  sec_gengroups_apps sec_gengroups_apps[]
+}
+
+model sec_gengroups {
+  group_id            Int                   @id @default(autoincrement())
+  description         String?               @db.VarChar(255)
+  sec_gengroups_apps  sec_gengroups_apps[]
+  sec_genusers_groups sec_genusers_groups[]
+}
+
+model sec_gengroups_apps {
+  group_id      Int
+  app_name      String        @db.VarChar(128)
+  priv_access   String?       @db.VarChar(1)
+  priv_insert   String?       @db.VarChar(1)
+  priv_delete   String?       @db.VarChar(1)
+  priv_update   String?       @db.VarChar(1)
+  priv_export   String?       @db.VarChar(1)
+  priv_print    String?       @db.VarChar(1)
+  sec_gengroups sec_gengroups @relation(fields: [group_id], references: [group_id], onDelete: Cascade, onUpdate: Restrict, map: "sec_gengroups_apps_ibfk_1")
+  sec_genapps   sec_genapps   @relation(fields: [app_name], references: [app_name], onDelete: Cascade, onUpdate: Restrict, map: "sec_gengroups_apps_ibfk_2")
+
+  @@id([group_id, app_name])
+  @@index([app_name], map: "sec_gengroups_apps_ibfk_2")
+}
+
+model sec_gensettings {
+  set_name  String  @id @db.VarChar(255)
+  set_value String? @db.VarChar(255)
+}
+
+model sec_genusers {
+  id                Int       @id @default(autoincrement())
+  login             String    @db.VarChar(255)
+  pswd              String    @db.VarChar(255)
+  name              String?   @db.VarChar(255)
+  email             String?   @db.VarChar(255)
+  active            String?   @db.VarChar(1)
+  activation_code   String?   @db.VarChar(32)
+  priv_admin        String?   @db.VarChar(1)
+  mfa               String?   @db.VarChar(255)
+  picture           Bytes?
+  role              String?   @db.VarChar(128)
+  phone             String?   @db.VarChar(64)
+  pswd_last_updated DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model sec_genusers_2023 {
+  id                Int       @id @default(autoincrement())
+  login             String    @db.VarChar(255)
+  pswd              String    @db.VarChar(255)
+  name              String?   @db.VarChar(255)
+  email             String?   @db.VarChar(255)
+  active            String?   @db.VarChar(1)
+  activation_code   String?   @db.VarChar(32)
+  priv_admin        String?   @db.VarChar(1)
+  mfa               String?   @db.VarChar(255)
+  picture           Bytes?
+  role              String?   @db.VarChar(128)
+  phone             String?   @db.VarChar(64)
+  pswd_last_updated DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model sec_genusers_PRUEBAS {
+  id                Int       @id @default(autoincrement())
+  login             String    @db.VarChar(255)
+  pswd              String    @db.VarChar(255)
+  name              String?   @db.VarChar(255)
+  email             String?   @db.VarChar(255)
+  active            String?   @db.VarChar(1)
+  activation_code   String?   @db.VarChar(32)
+  priv_admin        String?   @db.VarChar(1)
+  mfa               String?   @db.VarChar(255)
+  picture           Bytes?
+  role              String?   @db.VarChar(128)
+  phone             String?   @db.VarChar(64)
+  pswd_last_updated DateTime? @default(now()) @db.Timestamp(0)
+  agrupacion_pagos  String?   @db.VarChar(200)
+}
+
+model sec_genusers_copy1 {
+  id                Int       @id @default(autoincrement())
+  login             String    @db.VarChar(255)
+  pswd              String    @db.VarChar(255)
+  name              String?   @db.VarChar(255)
+  email             String?   @db.VarChar(255)
+  active            String?   @db.VarChar(1)
+  activation_code   String?   @db.VarChar(32)
+  priv_admin        String?   @db.VarChar(1)
+  mfa               String?   @db.VarChar(255)
+  picture           Bytes?
+  role              String?   @db.VarChar(128)
+  phone             String?   @db.VarChar(64)
+  pswd_last_updated DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model sec_genusers_groups {
+  login           String          @db.VarChar(255)
+  group_id        Int
+  oldsec_genusers oldsec_genusers @relation(fields: [login], references: [login], onDelete: Cascade, onUpdate: Restrict, map: "sec_genusers_groups_ibfk_1")
+  sec_gengroups   sec_gengroups   @relation(fields: [group_id], references: [group_id], onDelete: Cascade, onUpdate: Restrict, map: "sec_genusers_groups_ibfk_2")
+
+  @@id([login, group_id])
+  @@index([group_id], map: "sec_genusers_groups_ibfk_2")
+}
+
+model sec_saturnoapps {
+  app_name               String                   @id @db.VarChar(128)
+  app_type               String?                  @db.VarChar(255)
+  description            String?                  @db.VarChar(255)
+  sec_saturnogroups_apps sec_saturnogroups_apps[]
+}
+
+model sec_saturnogroups {
+  group_id                Int                       @id @default(autoincrement())
+  description             String?                   @db.VarChar(255)
+  sec_saturnogroups_apps  sec_saturnogroups_apps[]
+  sec_saturnousers_groups sec_saturnousers_groups[]
+}
+
+model sec_saturnogroups_apps {
+  group_id          Int
+  app_name          String            @db.VarChar(128)
+  priv_access       String?           @db.VarChar(1)
+  priv_insert       String?           @db.VarChar(1)
+  priv_delete       String?           @db.VarChar(1)
+  priv_update       String?           @db.VarChar(1)
+  priv_export       String?           @db.VarChar(1)
+  priv_print        String?           @db.VarChar(1)
+  sec_saturnogroups sec_saturnogroups @relation(fields: [group_id], references: [group_id], onDelete: Cascade, onUpdate: Restrict, map: "sec_saturnogroups_apps_ibfk_1")
+  sec_saturnoapps   sec_saturnoapps   @relation(fields: [app_name], references: [app_name], onDelete: Cascade, onUpdate: Restrict, map: "sec_saturnogroups_apps_ibfk_2")
+
+  @@id([group_id, app_name])
+  @@index([app_name], map: "sec_saturnogroups_apps_ibfk_2")
+}
+
+model sec_saturnosettings {
+  set_name  String  @id @db.VarChar(255)
+  set_value String? @db.VarChar(255)
+}
+
+model sec_saturnousers {
+  login                   String                    @id @db.VarChar(255)
+  pswd                    String                    @db.VarChar(255)
+  name                    String?                   @db.VarChar(255)
+  email                   String?                   @db.VarChar(255)
+  active                  String?                   @db.VarChar(1)
+  activation_code         String?                   @db.VarChar(32)
+  priv_admin              String?                   @db.VarChar(1)
+  mfa                     String?                   @db.VarChar(255)
+  picture                 Bytes?
+  role                    String?                   @db.VarChar(128)
+  phone                   String?                   @db.VarChar(64)
+  pswd_last_updated       DateTime                  @default(now()) @db.Timestamp(0)
+  sec_saturnousers_groups sec_saturnousers_groups[]
+}
+
+model sec_saturnousers_groups {
+  login             String            @db.VarChar(255)
+  group_id          Int
+  sec_saturnousers  sec_saturnousers  @relation(fields: [login], references: [login], onDelete: Cascade, onUpdate: Restrict, map: "sec_saturnousers_groups_ibfk_1")
+  sec_saturnogroups sec_saturnogroups @relation(fields: [group_id], references: [group_id], onDelete: Cascade, onUpdate: Restrict, map: "sec_saturnousers_groups_ibfk_2")
+
+  @@id([login, group_id])
+  @@index([group_id], map: "sec_saturnousers_groups_ibfk_2")
+}
+
+model tabla_multipagos {
+  id                     Int       @id @default(autoincrement())
+  numRuc                 String?   @db.VarChar(50)
+  codComp                String?   @db.VarChar(50)
+  numeroSerie            String?   @db.VarChar(50)
+  numero                 String?   @db.VarChar(50)
+  fechaEmision           DateTime? @db.Date
+  monto                  String?   @db.VarChar(50)
+  moneda                 String?   @db.VarChar(50)
+  estadoCp               String?   @db.VarChar(50)
+  estadoRuc              String?   @db.VarChar(50)
+  condDomiRuc            String?   @db.VarChar(50)
+  factdoc                String?   @db.VarChar(50)
+  xmldoc                 String?   @db.VarChar(50)
+  guiadoc                String?   @db.VarChar(50)
+  pedidodoc              String?   @db.VarChar(50)
+  stats                  String?   @db.VarChar(50)
+  orden_compra           String?   @db.VarChar(50)
+  orden_servicio         String?   @db.VarChar(50)
+  estado_contabilidad    String?   @db.VarChar(50)
+  estado_tesoreria       String?   @db.VarChar(50)
+  fecha_pago_tesoreria   DateTime? @db.Date
+  voucher_deposito       String?   @db.VarChar(50)
+  condPago               String?   @db.VarChar(50)
+  numeroSerial           String?   @db.VarChar(50)
+  fecha_estimada_pago    DateTime? @db.Date
+  fecha_ingreso_sistema  DateTime? @db.Timestamp(0)
+  tipo_servicio_conta    String?   @db.VarChar(50)
+  ordenes_pago           String?   @db.VarChar(50)
+  priorizar_pago_logis   String?   @db.VarChar(50)
+  multipago_facturas     String?   @db.VarChar(255)
+  multipago_empresa      String?   @db.VarChar(255)
+  multipago_numeroserial String?   @db.VarChar(255)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model transacciones {
+  id                 Int      @id @default(autoincrement())
+  correlativo        Int
+  nombre_archivo     String   @db.VarChar(100)
+  cantidad_registros Int
+  importe_total      Decimal  @db.Decimal(15, 4)
+  created_at         DateTime @default(now()) @db.Timestamp(0)
+
+  @@index([correlativo], map: "idx_correlativo")
+  @@index([nombre_archivo], map: "idx_nombre_archivo")
+}
