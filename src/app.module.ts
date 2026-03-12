@@ -10,6 +10,7 @@ import { SunatCredentialsModule } from './sunat-credentials/sunat-credentials.mo
 import { SunatStatusModule } from './sunat-status/sunat-status.module';
 import { HistorialLegacyModule } from './historial-legacy/historial-legacy.module';
 import { SearchModule } from './search/search.module';
+import { ReportesModule } from './reportes/reportes.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { SearchModule } from './search/search.module';
     SunatCredentialsModule,
     SunatStatusModule,
     HistorialLegacyModule,
+    ReportesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

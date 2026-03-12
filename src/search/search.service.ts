@@ -292,6 +292,46 @@ export class SearchService implements OnModuleInit {
     }
   }
 
+  // ── Búsqueda: Empresas únicas (para reporte) ──────────────────────────────
+  async searchEmpresas(q: string): Promise<{ ruc: string; nombre: string }[]> {
+    if (this.esAvailable) {
+      try {
+        const response = await this.esService.search({
+          index: LEGACY_INDEX,
+          size: 0,
+          query: q
+            ? {
+                bool: {
+                  should: [
+                    { prefix: { numRuc: { value: q } } },
+                    { match:  { nombre_empresa: { query: q, fuzziness: 'AUTO' } } },
+                  ],
+                  minimum_should_match: 1,
+                },
+              }
+            : { match_all: {} },
+          aggs: {
+            por_ruc: {
+              terms: { field: 'numRuc', size: 20 },
+              aggs: {
+                nombre: { top_hits: { size: 1, _source: ['nombre_empresa'] } },
+              },
+            },
+          },
+        });
+
+        const buckets: any[] = (response.aggregations?.por_ruc as any)?.buckets ?? [];
+        return buckets.map((b: any) => ({
+          ruc: b.key,
+          nombre: b.nombre?.hits?.hits?.[0]?._source?.nombre_empresa ?? b.key,
+        }));
+      } catch {
+        // fallback SQL
+      }
+    }
+    return [];
+  }
+
   // ── Estado del cluster ────────────────────────────────────────────────────
   async getStatus(): Promise<any> {
     if (!this.esAvailable) {

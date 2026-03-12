@@ -1,4 +1,5 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { HistorialLegacyService } from './historial-legacy.service';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -7,6 +8,21 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 @UseGuards(AuthGuard)
 export class HistorialLegacyController {
   constructor(private readonly historialLegacyService: HistorialLegacyService) {}
+
+  @Get(':id/file/:tipo')
+  async getFile(
+    @Param('id') id: string,
+    @Param('tipo') tipo: string,
+    @Res() res: Response,
+  ) {
+    const { stream, mimeType, name } = await this.historialLegacyService.getFile(
+      parseInt(id, 10),
+      tipo as any,
+    );
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `inline; filename="${name}"`);
+    stream.pipe(res);
+  }
 
   @Get()
   async findAll(

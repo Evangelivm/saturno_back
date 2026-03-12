@@ -70,14 +70,14 @@ export class GoogleDriveService {
       throw new Error('Google Drive no está configurado. Ejecuta "npm run generate-google-token" primero.');
     }
 
-    // 1. Crear carpeta del usuario si no existe
-    const userFolderId = await this.getOrCreateUserFolder(userId);
+    // 1. Obtener o crear carpeta facturas_2026
+    const folderId = await this.getOrCreateFacturasFolder();
 
     // 2. Subir archivo desde disco como stream
     const response = await this.drive.files.create({
       requestBody: {
         name: file.originalname,
-        parents: [userFolderId],
+        parents: [folderId],
         mimeType: file.mimetype,
       },
       media: {
@@ -90,46 +90,23 @@ export class GoogleDriveService {
     return response.data;
   }
 
-  private async getOrCreateUserFolder(userId: string): Promise<string> {
-    // 1. Obtener o crear carpeta raíz "Comprobantes Saturno"
-    const rootFolderName = 'Comprobantes Saturno';
-    let rootFolderId = await this.findFolder(rootFolderName);
+  private async getOrCreateFacturasFolder(): Promise<string> {
+    const folderName = 'facturas_2026';
+    let folderId = await this.findFolder(folderName);
 
-    if (!rootFolderId) {
-      const rootFolder = await this.drive.files.create({
+    if (!folderId) {
+      const folder = await this.drive.files.create({
         requestBody: {
-          name: rootFolderName,
+          name: folderName,
           mimeType: 'application/vnd.google-apps.folder',
         },
         fields: 'id',
       });
-      rootFolderId = rootFolder.data.id;
+      folderId = folder.data.id;
+      console.log(`✅ Carpeta "${folderName}" creada en Google Drive`);
     }
 
-    // 2. Buscar carpeta del usuario
-    const userFolderName = `Usuario_${userId}`;
-    const query = `name='${userFolderName}' and mimeType='application/vnd.google-apps.folder' and '${rootFolderId}' in parents and trashed=false`;
-
-    const response = await this.drive.files.list({
-      q: query,
-      fields: 'files(id, name)',
-    });
-
-    if (response.data.files.length > 0) {
-      return response.data.files[0].id;
-    }
-
-    // 3. Si no existe, crear carpeta del usuario
-    const folder = await this.drive.files.create({
-      requestBody: {
-        name: userFolderName,
-        mimeType: 'application/vnd.google-apps.folder',
-        parents: [rootFolderId],
-      },
-      fields: 'id',
-    });
-
-    return folder.data.id;
+    return folderId!;
   }
 
   private async findFolder(folderName: string): Promise<string | null> {
@@ -140,6 +117,30 @@ export class GoogleDriveService {
     });
 
     return response.data.files.length > 0 ? response.data.files[0].id : null;
+  }
+
+  async findFileInLegacyFolder(fileName: string, tipo: string): Promise<{ id: string; name: string; mimeType: string } | null> {
+    if (!this.drive) {
+      throw new Error('Google Drive no está configurado');
+    }
+
+    const folderMap: Record<string, string> = {
+      factura: 'FACTURAS2024',
+      xml:     'XML2024',
+      guia:    'GUIAS2024',
+      pedido:  'PEDIDOS2024',
+    };
+
+    const folderName = folderMap[tipo] ?? 'FACTURAS2024';
+    const folderId = await this.findFolder(folderName);
+    if (!folderId) return null;
+
+    const response = await this.drive.files.list({
+      q: `name='${fileName}' and '${folderId}' in parents and trashed=false`,
+      fields: 'files(id, name, mimeType)',
+    });
+
+    return response.data.files.length > 0 ? response.data.files[0] : null;
   }
 
   async getFile(fileId: string) {
