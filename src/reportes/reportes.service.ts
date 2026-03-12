@@ -23,7 +23,7 @@ export class ReportesService {
 
     // Fallback SQL sobre clientes2024
     const like = `%${q}%`;
-    const rows: any[] = await this.prismaSecond.$queryRawUnsafe(
+    const rows: any[] = await (this.prismaSecond as any).$queryRawUnsafe(
       `SELECT DISTINCT numRuc, nombre_empresa
        FROM clientes2024
        WHERE numRuc LIKE ? OR nombre_empresa LIKE ?
@@ -53,7 +53,7 @@ export class ReportesService {
       filters.push(`STR_TO_DATE(fechaEmision, '%d/%m/%Y') <= STR_TO_DATE('${hastaStr}', '%d/%m/%Y')`);
     }
 
-    const records: any[] = await this.prismaSecond.$queryRawUnsafe(
+    const records: any[] = await (this.prismaSecond as any).$queryRawUnsafe(
       `SELECT * FROM clientes2024 WHERE ${filters.join(' AND ')} ORDER BY id DESC`
     );
 
@@ -180,7 +180,7 @@ export class ReportesService {
     }
 
     const where = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
-    const records: any[] = await this.prismaSecond.$queryRawUnsafe(
+    const records: any[] = await (this.prismaSecond as any).$queryRawUnsafe(
       `SELECT id, numRuc, numeroSerie, numero, factdoc, xmldoc, guiadoc, pedidodoc FROM clientes2024 ${where} ORDER BY id DESC`
     );
 
