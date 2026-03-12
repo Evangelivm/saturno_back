@@ -8,15 +8,18 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig*.json ./
 COPY prisma ./prisma/
+COPY prisma_second ./prisma_second/
+COPY prisma.config.second.ts ./
 
-# Limpia la cachÃ© de npm para evitar problemas anteriores
+# Limpia la caché de npm para evitar problemas anteriores
 RUN npm cache clean --force
 
 # Instala las dependencias
 RUN npm install
 
-# Genera el cliente de Prisma
+# Genera ambos clientes de Prisma
 RUN npx prisma generate
+RUN npm run prisma:generate:second
 
 # Copia el resto de los archivos del proyecto
 COPY . .
