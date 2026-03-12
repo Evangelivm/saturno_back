@@ -1,0 +1,17 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3003"
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - shared_network
+
+networks:
+  shared_network:
+    external: true
