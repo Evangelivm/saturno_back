@@ -5,7 +5,20 @@ import { SearchService } from '../search/search.service';
 import { GoogleDriveService } from '../google-drive/google-drive.service';
 import * as ExcelJS from 'exceljs';
 import archiver = require('archiver');
+import pLimit from 'p-limit';
 import { Response } from 'express';
+import type { Readable } from 'stream';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+
+async function streamToBuffer(stream: Readable): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
 
 @Injectable()
 export class ReportesService {
@@ -191,30 +204,68 @@ export class ReportesService {
       pedido:  'pedidodoc',
     };
 
-    (res as any).socket?.setTimeout(0);
+    const tmpFile = path.join(os.tmpdir(), `legacy-batch-${Date.now()}.zip`);
+    const output = fs.createWriteStream(tmpFile);
+
+    const archive = archiver('zip', { zlib: { level: 1 } });
+    archive.pipe(output);
+
+    const errores: string[] = [];
+    const limit = pLimit(3);
+    await Promise.allSettled(
+      records.flatMap((rec) => {
+        const folder = `${rec.numeroSerie ?? ''}-${rec.numero ?? ''}`.trim() || `id-${rec.id}`;
+        return tipos.map((tipo) =>
+          limit(async () => {
+            const campo = campoMap[tipo];
+            const fileName: string | null = rec[campo] ?? null;
+            if (!fileName) return;
+
+            try {
+              const file = await this.driveService.findFileInLegacyFolder(fileName, tipo);
+              if (!file) {
+                errores.push(`[NO ENCONTRADO] ${folder}/${fileName}`);
+                return;
+              }
+              const stream = await this.driveService.downloadStream(file.id);
+              const buffer = await streamToBuffer(stream as any);
+              archive.append(buffer, { name: `${folder}/${fileName}` });
+            } catch (err: any) {
+              const msg = `[ERROR] ${folder}/${fileName} — ${err?.message ?? err}`;
+              errores.push(msg);
+              console.error(msg);
+            }
+          }),
+        );
+      }),
+    );
+
+    if (errores.length > 0) {
+      archive.append(errores.join('\n'), { name: '_errores.txt' });
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      output.on('close', resolve);
+      output.on('error', reject);
+      archive.on('error', reject);
+      archive.finalize();
+    });
+
+    const zipSize = fs.statSync(tmpFile).size;
     res.set({
       'Content-Type': 'application/zip',
+      'Content-Length': String(zipSize),
       'Content-Disposition': `attachment; filename="historial-${desde}-a-${hasta}.zip"`,
     });
 
-    const archive = archiver('zip', { zlib: { level: 1 } });
-    archive.pipe(res);
-
-    for (const rec of records) {
-      const folder = `${rec.numeroSerie ?? ''}-${rec.numero ?? ''}`.trim() || `id-${rec.id}`;
-      for (const tipo of tipos) {
-        const campo = campoMap[tipo];
-        const fileName: string | null = rec[campo] ?? null;
-        if (!fileName) continue;
-
-        const file = await this.driveService.findFileInLegacyFolder(fileName, tipo);
-        if (!file) continue;
-
-        const stream = await this.driveService.downloadStream(file.id);
-        archive.append(stream as any, { name: `${folder}/${fileName}` });
-      }
-    }
-
-    await archive.finalize();
+    await new Promise<void>((resolve, reject) => {
+      const readStream = fs.createReadStream(tmpFile);
+      readStream.on('error', reject);
+      res.on('finish', resolve);
+      res.on('error', reject);
+      readStream.pipe(res);
+    }).finally(() => {
+      fs.unlink(tmpFile, () => {});
+    });
   }
 }

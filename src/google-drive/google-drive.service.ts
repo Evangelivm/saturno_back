@@ -9,6 +9,7 @@ import * as path from 'path';
 export class GoogleDriveService {
   private drive: any;
   private oauth2Client: any;
+  private readonly folderCache = new Map<string, string | null>();
 
   constructor(private readonly config: ConfigService) {
     this.initializeOAuth();
@@ -110,13 +111,18 @@ export class GoogleDriveService {
   }
 
   private async findFolder(folderName: string): Promise<string | null> {
-    const query = `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
-    const response = await this.drive.files.list({
-      q: query,
-      fields: 'files(id, name)',
-    });
+    if (this.folderCache.has(folderName)) {
+      return this.folderCache.get(folderName) ?? null;
+    }
 
-    return response.data.files.length > 0 ? response.data.files[0].id : null;
+    const query = `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+    const response = await this.withRetry<any>(() =>
+      this.drive.files.list({ q: query, fields: 'files(id, name)' }),
+    );
+
+    const folderId: string | null = response.data.files.length > 0 ? response.data.files[0].id : null;
+    this.folderCache.set(folderName, folderId);
+    return folderId;
   }
 
   async findFileInLegacyFolder(fileName: string, tipo: string): Promise<{ id: string; name: string; mimeType: string } | null> {
@@ -135,10 +141,12 @@ export class GoogleDriveService {
     const folderId = await this.findFolder(folderName);
     if (!folderId) return null;
 
-    const response = await this.drive.files.list({
-      q: `name='${fileName}' and '${folderId}' in parents and trashed=false`,
-      fields: 'files(id, name, mimeType)',
-    });
+    const response = await this.withRetry<any>(() =>
+      this.drive.files.list({
+        q: `name='${fileName}' and '${folderId}' in parents and trashed=false`,
+        fields: 'files(id, name, mimeType)',
+      }),
+    );
 
     return response.data.files.length > 0 ? response.data.files[0] : null;
   }
@@ -166,14 +174,42 @@ export class GoogleDriveService {
     });
   }
 
+  private async withRetry<T>(fn: () => Promise<T>, maxRetries = 4): Promise<T> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let lastError: any;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (rawErr: unknown) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const err = rawErr as any;
+        const status: number | string | undefined = err?.response?.status ?? err?.status ?? err?.code;
+        const reason: string = err?.response?.data?.error?.errors?.[0]?.reason ?? '';
+        const isRateLimit =
+          status === 429 ||
+          (status === 403 && (reason.includes('rateLimitExceeded') || reason.includes('userRateLimitExceeded')));
+        const isServerError = status === 500 || status === 503;
+
+        if ((isRateLimit || isServerError) && attempt < maxRetries) {
+          const delay = Math.min(1000 * Math.pow(2, attempt) + Math.random() * 500, 32000);
+          console.warn(`⏳ Google Drive rate limit, reintentando en ${Math.round(delay)}ms (intento ${attempt + 1}/${maxRetries})`);
+          await new Promise((r) => setTimeout(r, delay));
+          lastError = err;
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastError;
+  }
+
   async downloadStream(fileId: string): Promise<Readable> {
     if (!this.drive) {
       throw new Error('Google Drive no está configurado');
     }
 
-    const response = await this.drive.files.get(
-      { fileId, alt: 'media' },
-      { responseType: 'stream' },
+    const response = await this.withRetry<any>(() =>
+      this.drive.files.get({ fileId, alt: 'media' }, { responseType: 'stream' }),
     );
 
     return response.data;
@@ -184,20 +220,15 @@ export class GoogleDriveService {
       throw new Error('Google Drive no está configurado');
     }
 
-    const metaResponse = await this.drive.files.get({
-      fileId,
-      fields: 'name, mimeType',
-    });
-
-    const contentResponse = await this.drive.files.get(
-      { fileId, alt: 'media' },
-      { responseType: 'stream' },
-    );
+    const [metaResponse, contentResponse] = await Promise.all([
+      this.withRetry(() => this.drive.files.get({ fileId, fields: 'name, mimeType' })),
+      this.withRetry(() => this.drive.files.get({ fileId, alt: 'media' }, { responseType: 'stream' })),
+    ]);
 
     return {
-      stream: contentResponse.data,
-      mimeType: metaResponse.data.mimeType || 'application/octet-stream',
-      name: metaResponse.data.name || 'archivo',
+      stream: (contentResponse as any).data,
+      mimeType: (metaResponse as any).data.mimeType || 'application/octet-stream',
+      name: (metaResponse as any).data.name || 'archivo',
     };
   }
 }

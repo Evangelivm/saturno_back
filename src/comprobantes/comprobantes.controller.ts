@@ -17,6 +17,16 @@ import { extname } from 'path';
 import { tmpdir } from 'os';
 import { unlink } from 'fs/promises';
 import archiver from 'archiver';
+import pLimit from 'p-limit';
+import type { Readable } from 'stream';
+
+async function streamToBuffer(stream: Readable): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
 import { ComprobantesService } from './comprobantes.service';
 import { GoogleDriveService } from '../google-drive/google-drive.service';
 import type { CreateComprobanteDto } from './dto/create-comprobante.dto';
@@ -90,11 +100,29 @@ export class ComprobantesController {
     });
 
     const archive = archiver('zip', { zlib: { level: 1 } });
+    archive.on('error', (err) => { res.destroy(err); });
     archive.pipe(res);
 
-    for (const file of allFiles) {
-      const stream = await this.driveService.downloadStream(file.fileId);
-      archive.append(stream, { name: `${file.folder}/${file.fileName}` });
+    const errores: string[] = [];
+    const limit = pLimit(3);
+    await Promise.allSettled(
+      allFiles.map((file) =>
+        limit(async () => {
+          try {
+            const stream = await this.driveService.downloadStream(file.fileId);
+            const buffer = await streamToBuffer(stream as any);
+            archive.append(buffer, { name: `${file.folder}/${file.fileName}` });
+          } catch (err: any) {
+            const msg = `[ERROR] ${file.folder}/${file.fileName} — ${err?.message ?? err}`;
+            errores.push(msg);
+            console.error(msg);
+          }
+        }),
+      ),
+    );
+
+    if (errores.length > 0) {
+      archive.append(errores.join('\n'), { name: '_errores.txt' });
     }
 
     archive.finalize();
@@ -197,12 +225,18 @@ export class ComprobantesController {
     });
 
     const archive = archiver('zip', { zlib: { level: 9 } });
+    archive.on('error', (err) => { res.destroy(err); });
     archive.pipe(res);
 
-    for (const file of files) {
-      const { stream, name } = await this.driveService.downloadFileStream(file.fileId);
-      archive.append(stream, { name });
-    }
+    const limit = pLimit(3);
+    await Promise.allSettled(
+      files.map((file) =>
+        limit(async () => {
+          const { stream, name } = await this.driveService.downloadFileStream(file.fileId);
+          archive.append(stream, { name });
+        }),
+      ),
+    );
 
     archive.finalize();
   }
