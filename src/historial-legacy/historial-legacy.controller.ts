@@ -31,12 +31,16 @@ export class HistorialLegacyController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: string,
   ) {
     return this.historialLegacyService.findAll(user.ruc, user.role, {
       ruc,
       page: Math.max(parseInt(page ?? '1', 10) || 1, 1),
       limit: Math.min(Math.max(parseInt(limit ?? '30', 10) || 30, 1), 100),
       search,
+      sortBy,
+      sortOrder: sortOrder === 'asc' ? 'asc' : 'desc',
     });
   }
 }

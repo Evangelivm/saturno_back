@@ -22,6 +22,8 @@ export const CreateComprobanteSchema = z.object({
 
   condicionPago: z.enum(['CONTADO', 'CREDITO']),
 
+  credito: z.enum(['7', '15', '30', '45', '90']).optional(),
+
   tipoFactura: z.enum([
     'REPARACION_RECONSTRUCCION',
     'TRANSPORTE',

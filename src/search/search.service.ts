@@ -31,6 +31,22 @@ function buildComprobantesSort(sortBy?: string, sortOrder?: 'asc' | 'desc'): any
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Orden por columna (legacy) — "monto" no está indexado en ES y "fecha" se
+// resuelve siempre por SQL (STR_TO_DATE) para un orden cronológico real
+// ─────────────────────────────────────────────────────────────────────────────
+const LEGACY_SORT_FIELD_MAP: Record<string, string> = {
+  numero: 'numero',
+  empresa: 'nombre_empresa.keyword',
+  estado: 'estadoCp',
+};
+
+function buildLegacySort(sortBy?: string, sortOrder?: 'asc' | 'desc'): any[] {
+  const field = sortBy ? LEGACY_SORT_FIELD_MAP[sortBy] : undefined;
+  if (!field) return [{ fecha_ingreso_sistema: { order: 'desc' } }];
+  return [{ [field]: { order: sortOrder === 'asc' ? 'asc' : 'desc' } }];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Query builder
 // ─────────────────────────────────────────────────────────────────────────────
 function buildSearchQuery(search: string): any {
@@ -267,7 +283,7 @@ export class SearchService implements OnModuleInit {
   ): Promise<SearchResult<LegacyDocument> | null> {
     if (!this.esAvailable) return null;
 
-    const { page, limit, role, userRuc } = options;
+    const { page, limit, role, userRuc, sortBy, sortOrder } = options;
     const from = (page - 1) * limit;
 
     const filter: any[] = [];
@@ -286,7 +302,7 @@ export class SearchService implements OnModuleInit {
             filter,
           },
         },
-        sort: [{ fecha_ingreso_sistema: { order: 'desc' } }],
+        sort: buildLegacySort(sortBy, sortOrder),
       });
 
       const total =
