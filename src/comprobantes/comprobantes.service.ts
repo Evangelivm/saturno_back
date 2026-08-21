@@ -6,6 +6,21 @@ import { ComprobanteDocument } from '../search/interfaces/search-documents.inter
 import { CreateComprobanteDto } from './dto/create-comprobante.dto';
 import { generateAlphanumericCode } from '../common/utils/generate-code.util';
 
+// ── Orden por columna ────────────────────────────────────────────────────────
+const SORTABLE_FIELDS: Record<string, (order: 'asc' | 'desc') => any> = {
+  numero: (order) => [{ numeroSerie: order }, { numero: order }],
+  empresa: (order) => [{ user: { nombreEmpresa: order } }],
+  estado: (order) => [{ sunatSuccess: order }, { sunatEstadoCp: order }],
+  monto: (order) => [{ monto: order }],
+  fecha: (order) => [{ fechaEmision: order }],
+};
+
+function buildOrderBy(sortBy?: string, sortOrder?: string) {
+  const build = sortBy ? SORTABLE_FIELDS[sortBy] : undefined;
+  if (!build) return [{ createdAt: 'desc' as const }, { id: 'desc' as const }];
+  return build(sortOrder === 'asc' ? 'asc' : 'desc');
+}
+
 @Injectable()
 export class ComprobantesService {
   constructor(
@@ -67,10 +82,11 @@ export class ComprobantesService {
   async findAll(
     userId: string,
     role: string,
-    options: { page?: number; limit?: number; search?: string } = {},
+    options: { page?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string } = {},
   ) {
-    const { page = 1, limit = 30, search } = options;
+    const { page = 1, limit = 30, search, sortBy, sortOrder } = options;
     const baseWhere: any = role === 'ADMIN' ? {} : { userId };
+    const orderBy = buildOrderBy(sortBy, sortOrder);
 
     // ── Búsqueda con Elasticsearch (evita los COUNT SQL si ES responde) ──────
     if (search) {
@@ -80,6 +96,8 @@ export class ComprobantesService {
           limit,
           role,
           userId,
+          sortBy,
+          sortOrder: sortOrder === 'asc' ? 'asc' : 'desc',
         });
 
         if (esResult) {
@@ -111,7 +129,7 @@ export class ComprobantesService {
         this.prisma.comprobante.findMany({
           where: searchWhere,
           include: role === 'ADMIN' ? { user: { select: { ruc: true } } } : undefined,
-          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          orderBy,
           skip,
           take: limit,
         }),
@@ -144,7 +162,7 @@ export class ComprobantesService {
     const items = await this.prisma.comprobante.findMany({
       where: baseWhere,
       include: role === 'ADMIN' ? { user: { select: { ruc: true } } } : undefined,
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      orderBy,
       skip,
       take: limit,
     });

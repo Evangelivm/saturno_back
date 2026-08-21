@@ -66,4 +66,6 @@ export interface SearchOptions {
   role?: string;
   userId?: string;
   userRuc?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }

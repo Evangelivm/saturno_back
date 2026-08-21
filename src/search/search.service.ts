@@ -14,6 +14,23 @@ export const COMPROBANTES_INDEX = 'saturno_comprobantes';
 export const LEGACY_INDEX = 'saturno_comprobantes_legacy';
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Orden por columna (comprobantes)
+// ─────────────────────────────────────────────────────────────────────────────
+const COMPROBANTES_SORT_FIELD_MAP: Record<string, string> = {
+  numero: 'numero',
+  empresa: 'nombreEmpresa.keyword',
+  estado: 'sunatSuccess',
+  monto: 'monto',
+  fecha: 'fechaEmision',
+};
+
+function buildComprobantesSort(sortBy?: string, sortOrder?: 'asc' | 'desc'): any[] {
+  const field = sortBy ? COMPROBANTES_SORT_FIELD_MAP[sortBy] : undefined;
+  if (!field) return [{ createdAt: { order: 'desc' } }];
+  return [{ [field]: { order: sortOrder === 'asc' ? 'asc' : 'desc' } }];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Query builder
 // ─────────────────────────────────────────────────────────────────────────────
 function buildSearchQuery(search: string): any {
@@ -189,7 +206,7 @@ export class SearchService implements OnModuleInit {
   ): Promise<(SearchResult<ComprobanteDocument> & { validados: number; rechazados: number }) | null> {
     if (!this.esAvailable) return null;
 
-    const { page, limit, role, userId } = options;
+    const { page, limit, role, userId, sortBy, sortOrder } = options;
     const from = (page - 1) * limit;
 
     const filter: any[] = [];
@@ -208,7 +225,7 @@ export class SearchService implements OnModuleInit {
             filter,
           },
         },
-        sort: [{ createdAt: { order: 'desc' } }],
+        sort: buildComprobantesSort(sortBy, sortOrder),
         // Agrega conteo de validados en la misma query (sin coste extra)
         aggs: {
           validados_count: { filter: { term: { sunatSuccess: true } } },
