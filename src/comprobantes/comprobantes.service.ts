@@ -300,6 +300,28 @@ export class ComprobantesService {
     return { success: sunatResponse.success, message: sunatResponse.message, data: sunatResponse.data };
   }
 
+  async toggleContabilidad(userId: string, role: string, id: string) {
+    const comprobante = await this.prisma.comprobante.findUnique({ where: { id } });
+    if (!comprobante) throw new NotFoundException('Comprobante no encontrado');
+    if (role !== 'ADMIN' && comprobante.userId !== userId) {
+      throw new ForbiddenException('No tienes permiso para validar este comprobante');
+    }
+
+    const nuevoValor = !comprobante.contabilidadValidado;
+    const updated = await this.prisma.comprobante.update({
+      where: { id },
+      data: {
+        contabilidadValidado: nuevoValor,
+        contabilidadValidadoAt: nuevoValor ? new Date() : null,
+      },
+    });
+
+    return {
+      contabilidadValidado: updated.contabilidadValidado,
+      contabilidadValidadoAt: updated.contabilidadValidadoAt,
+    };
+  }
+
   // ── Helpers privados ───────────────────────────────────────────────────────
   private toEsDocument(c: any): ComprobanteDocument {
     return {

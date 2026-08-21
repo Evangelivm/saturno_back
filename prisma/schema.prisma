@@ -87,6 +87,8 @@ model Comprobante {
   ordenCompraFileId     String?   @map("orden_compra_file_id") @db.VarChar(255)
   ordenCompraFileName   String?   @map("orden_compra_file_name") @db.VarChar(500)
   ordenCompraUploadedAt DateTime? @map("orden_compra_uploaded_at") @db.DateTime(0)
+  contabilidadValidado   Boolean   @default(false) @map("contabilidad_validado")
+  contabilidadValidadoAt DateTime? @map("contabilidad_validado_at") @db.DateTime(0)
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])

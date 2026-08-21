@@ -173,6 +173,11 @@ export class ComprobantesController {
     return this.comprobantesService.revalidate(user.id, user.role, id);
   }
 
+  @Put(':id/contabilidad')
+  async toggleContabilidad(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.comprobantesService.toggleContabilidad(user.id, user.role, id);
+  }
+
   @Get(':id/download/:tipo')
   async downloadFile(
     @CurrentUser() user: any,
