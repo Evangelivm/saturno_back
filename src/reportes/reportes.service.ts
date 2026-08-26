@@ -221,7 +221,9 @@ export class ReportesService {
     archive.pipe(res);
 
     const errores: string[] = [];
-    const limit = pLimit(3);
+    // pLimit(3) era por el rate-limit de Drive; ahora casi todo sale de R2
+    // (sin cuota agresiva), probado sin fallos hasta concurrencia 25.
+    const limit = pLimit(20);
     await Promise.allSettled(
       records.flatMap((rec) => {
         const folder = `${rec.numeroSerie ?? ''}-${rec.numero ?? ''}`.trim() || `id-${rec.id}`;
