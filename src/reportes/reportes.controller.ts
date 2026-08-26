@@ -38,6 +38,19 @@ export class ReportesController {
     res!.send(buffer);
   }
 
+  @Get('legacy-batch-size')
+  async legacyBatchSize(
+    @CurrentUser() user: any,
+    @Query('desde') desde: string,
+    @Query('hasta') hasta: string,
+    @Query('tipos') tipos: string,
+    @Query('ruc') ruc?: string,
+  ) {
+    if (user.role !== 'ADMIN') throw new ForbiddenException();
+    const tiposArr = tipos ? tipos.split(',') : ['factura', 'xml', 'guia', 'pedido'];
+    return this.reportesService.estimateLegacyBatchSize(desde, hasta, tiposArr, ruc);
+  }
+
   @Get('legacy-batch')
   async legacyBatch(
     @CurrentUser() user: any,

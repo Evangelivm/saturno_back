@@ -168,20 +168,14 @@ export class ReportesService {
     return { buffer, filename };
   }
 
-  async legacyBatch(
-    res: Response,
-    desde: string,
-    hasta: string,
-    tipos: string[],
-    ruc?: string,
-  ): Promise<void> {
-    const folderMap: Record<string, string> = {
-      factura: 'FACTURAS2024',
-      xml:     'XML2024',
-      guia:    'GUIAS2024',
-      pedido:  'PEDIDOS2024',
-    };
+  private readonly campoMap: Record<string, string> = {
+    factura: 'factdoc',
+    xml:     'xmldoc',
+    guia:    'guiadoc',
+    pedido:  'pedidodoc',
+  };
 
+  private async fetchLegacyRecords(desde: string, hasta: string, ruc?: string): Promise<any[]> {
     const filters: string[] = [];
     if (ruc) filters.push(`numRuc = '${ruc}'`);
     if (desde) {
@@ -194,16 +188,56 @@ export class ReportesService {
     }
 
     const where = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
-    const records: any[] = await (this.prismaSecond as any).$queryRawUnsafe(
+    return (this.prismaSecond as any).$queryRawUnsafe(
       `SELECT id, numRuc, numeroSerie, numero, factdoc, xmldoc, guiadoc, pedidodoc FROM clientes2024 ${where} ORDER BY id DESC`
     );
+  }
 
-    const campoMap: Record<string, keyof typeof records[0]> = {
-      factura: 'factdoc',
-      xml:     'xmldoc',
-      guia:    'guiadoc',
-      pedido:  'pedidodoc',
-    };
+  /**
+   * Suma los tamaños originales (Drive) de los documentos que va a incluir el zip,
+   * usando el índice en memoria — sin tocar red. Se usa en el front para calcular
+   * un % de progreso real en vez de solo mostrar MB acumulados sin referencia.
+   * Es un estimado: el zip comprime un poco, así que el peso final baja algo
+   * respecto a esta suma (más en XML, casi nada en PDF/imágenes ya comprimidos).
+   */
+  async estimateLegacyBatchSize(
+    desde: string,
+    hasta: string,
+    tipos: string[],
+    ruc?: string,
+  ): Promise<{ totalBytes: number; totalArchivos: number; archivosSinTamano: number }> {
+    const records = await this.fetchLegacyRecords(desde, hasta, ruc);
+
+    let totalBytes = 0;
+    let totalArchivos = 0;
+    let archivosSinTamano = 0;
+
+    for (const rec of records) {
+      for (const tipo of tipos) {
+        const fileName: string | null = rec[this.campoMap[tipo]] ?? null;
+        if (!fileName) continue;
+        totalArchivos++;
+        const size = this.legacyR2Index.getSize(rec.id, tipo as any);
+        if (size === undefined) {
+          archivosSinTamano++;
+        } else {
+          totalBytes += size;
+        }
+      }
+    }
+
+    return { totalBytes, totalArchivos, archivosSinTamano };
+  }
+
+  async legacyBatch(
+    res: Response,
+    desde: string,
+    hasta: string,
+    tipos: string[],
+    ruc?: string,
+  ): Promise<void> {
+    const records = await this.fetchLegacyRecords(desde, hasta, ruc);
+    const campoMap = this.campoMap;
 
     // Streaming directo a la respuesta: si se arma el zip en un archivo temporal
     // primero (como antes), el cliente no recibe ni un byte hasta que TODO el
