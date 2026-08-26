@@ -3,6 +3,8 @@ import { PrismaSecondService } from '../database/prisma-second.service';
 import { PrismaService } from '../database/prisma.service';
 import { SearchService } from '../search/search.service';
 import { GoogleDriveService } from '../google-drive/google-drive.service';
+import { R2Service } from '../r2/r2.service';
+import { LegacyR2IndexService } from '../r2/legacy-r2-index.service';
 import * as ExcelJS from 'exceljs';
 import archiver = require('archiver');
 import pLimit from 'p-limit';
@@ -27,6 +29,8 @@ export class ReportesService {
     private readonly prisma: PrismaService,
     private readonly searchService: SearchService,
     private readonly driveService: GoogleDriveService,
+    private readonly r2Service: R2Service,
+    private readonly legacyR2Index: LegacyR2IndexService,
   ) {}
 
   async searchEmpresas(q: string): Promise<{ ruc: string; nombre: string }[]> {
@@ -222,6 +226,14 @@ export class ReportesService {
             if (!fileName) return;
 
             try {
+              const r2Key = this.legacyR2Index.getKey(rec.id, tipo as any);
+              if (r2Key) {
+                const { stream } = await this.r2Service.getObjectStream(r2Key);
+                const buffer = await streamToBuffer(stream as any);
+                archive.append(buffer, { name: `${folder}/${fileName}` });
+                return;
+              }
+
               const file = await this.driveService.findFileInLegacyFolder(fileName, tipo);
               if (!file) {
                 errores.push(`[NO ENCONTRADO] ${folder}/${fileName}`);

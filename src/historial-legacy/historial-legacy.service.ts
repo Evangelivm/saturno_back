@@ -3,6 +3,8 @@ import { Prisma } from 'prisma-second-client';
 import { PrismaSecondService } from '../database/prisma-second.service';
 import { SearchService } from '../search/search.service';
 import { GoogleDriveService } from '../google-drive/google-drive.service';
+import { R2Service } from '../r2/r2.service';
+import { LegacyR2IndexService } from '../r2/legacy-r2-index.service';
 
 type TipoDoc = 'factura' | 'xml' | 'guia' | 'pedido';
 
@@ -35,6 +37,8 @@ export class HistorialLegacyService {
     private readonly prismaSecond: PrismaSecondService,
     private readonly searchService: SearchService,
     private readonly driveService: GoogleDriveService,
+    private readonly r2Service: R2Service,
+    private readonly legacyR2Index: LegacyR2IndexService,
   ) {}
 
   async findAll(
@@ -79,6 +83,12 @@ export class HistorialLegacyService {
 
     const fileName = campoMap[tipo];
     if (!fileName) throw new NotFoundException(`No hay archivo de tipo "${tipo}" para este registro`);
+
+    const r2Key = this.legacyR2Index.getKey(id, tipo);
+    if (r2Key) {
+      const { stream, contentType } = await this.r2Service.getObjectStream(r2Key);
+      return { stream, mimeType: contentType ?? 'application/octet-stream', name: fileName };
+    }
 
     const file = await this.driveService.findFileInLegacyFolder(fileName, tipo);
     if (!file) throw new NotFoundException(`Archivo "${fileName}" no encontrado en Google Drive`);
