@@ -10,9 +10,6 @@ import archiver = require('archiver');
 import pLimit from 'p-limit';
 import { Response } from 'express';
 import type { Readable } from 'stream';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
 
 async function streamToBuffer(stream: Readable): Promise<Buffer> {
   const chunks: Buffer[] = [];
@@ -208,11 +205,20 @@ export class ReportesService {
       pedido:  'pedidodoc',
     };
 
-    const tmpFile = path.join(os.tmpdir(), `legacy-batch-${Date.now()}.zip`);
-    const output = fs.createWriteStream(tmpFile);
+    // Streaming directo a la respuesta: si se arma el zip en un archivo temporal
+    // primero (como antes), el cliente no recibe ni un byte hasta que TODO el
+    // zip esté listo — la barra de progreso del navegador se queda en 0 durante
+    // todo el proceso y luego "salta" al final. Con archive.pipe(res) los bytes
+    // fluyen a medida que se van agregando archivos.
+    res.socket?.setTimeout(0);
+    res.set({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="historial-${desde}-a-${hasta}.zip"`,
+    });
 
     const archive = archiver('zip', { zlib: { level: 1 } });
-    archive.pipe(output);
+    archive.on('error', (err) => { res.destroy(err); });
+    archive.pipe(res);
 
     const errores: string[] = [];
     const limit = pLimit(3);
@@ -256,28 +262,6 @@ export class ReportesService {
       archive.append(errores.join('\n'), { name: '_errores.txt' });
     }
 
-    await new Promise<void>((resolve, reject) => {
-      output.on('close', resolve);
-      output.on('error', reject);
-      archive.on('error', reject);
-      archive.finalize();
-    });
-
-    const zipSize = fs.statSync(tmpFile).size;
-    res.set({
-      'Content-Type': 'application/zip',
-      'Content-Length': String(zipSize),
-      'Content-Disposition': `attachment; filename="historial-${desde}-a-${hasta}.zip"`,
-    });
-
-    await new Promise<void>((resolve, reject) => {
-      const readStream = fs.createReadStream(tmpFile);
-      readStream.on('error', reject);
-      res.on('finish', resolve);
-      res.on('error', reject);
-      readStream.pipe(res);
-    }).finally(() => {
-      fs.unlink(tmpFile, () => {});
-    });
+    await archive.finalize();
   }
 }
