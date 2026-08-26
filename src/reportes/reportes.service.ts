@@ -257,8 +257,9 @@ export class ReportesService {
     const errores: string[] = [];
     // pLimit(3) era por el rate-limit de Drive; ahora casi todo sale de R2
     // (sin cuota agresiva). Probado con 8600 documentos reales: 0 fallos a
-    // concurrencia 50, ~2x más rápido que 15 (125s vs 260s, ~530MB RSS pico).
-    const limit = pLimit(50);
+    // concurrencia 50 (125s, ~530MB RSS pico), sin mejora hasta 100 en máquina
+    // local (bandwidth-bound ahí). 70 sin medir aún en el VPS de producción.
+    const limit = pLimit(70);
     await Promise.allSettled(
       records.flatMap((rec) => {
         const folder = `${rec.numeroSerie ?? ''}-${rec.numero ?? ''}`.trim() || `id-${rec.id}`;
