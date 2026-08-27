@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import { SunatService } from '../sunat/sunat.service';
+import { SunatService, SunatUnavailableError } from '../sunat/sunat.service';
 import { SearchService } from '../search/search.service';
 import { ComprobanteDocument } from '../search/interfaces/search-documents.interface';
 import { CreateComprobanteDto } from './dto/create-comprobante.dto';
@@ -23,6 +23,8 @@ function buildOrderBy(sortBy?: string, sortOrder?: string) {
 
 @Injectable()
 export class ComprobantesService {
+  private readonly logger = new Logger(ComprobantesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly sunatService: SunatService,
@@ -30,11 +32,15 @@ export class ComprobantesService {
   ) {}
 
   async create(userId: string, dto: CreateComprobanteDto) {
-    // 1. Validar con SUNAT
-    const sunatResponse = await this.sunatService.validateComprobante({
-      userId,
-      ...dto,
-    });
+    // 1. Validar con SUNAT — si no está disponible (timeout/red), no bloquea el
+    //    registro: se guarda como pendiente (sunatSuccess: null) y se valida solo
+    //    cuando SunatStatusService detecte que SUNAT volvió (ver drainPendingSunatValidations).
+    let sunatResponse: Awaited<ReturnType<SunatService['validateComprobante']>> | null = null;
+    try {
+      sunatResponse = await this.sunatService.validateComprobante({ userId, ...dto });
+    } catch (err) {
+      if (!(err instanceof SunatUnavailableError)) throw err;
+    }
 
     // 2. Generar código alfanumérico único
     const codigoAlfanumerico = await this.generateUniqueCode();
@@ -52,13 +58,13 @@ export class ComprobantesService {
         numeroOrden: dto.numeroOrden,
         monto: dto.monto,
         codigoAlfanumerico,
-        sunatSuccess: sunatResponse.success,
-        sunatMessage: sunatResponse.message,
-        sunatEstadoCp: sunatResponse.data?.estadoCp ? parseInt(sunatResponse.data.estadoCp, 10) : null,
-        sunatEstadoRuc: sunatResponse.data?.estadoRuc,
-        sunatCondDomiRuc: sunatResponse.data?.condDomiRuc,
-        sunatObservaciones: sunatResponse.data?.observaciones || [],
-        sunatErrorCode: sunatResponse.errorCode,
+        sunatSuccess: sunatResponse ? sunatResponse.success : null,
+        sunatMessage: sunatResponse ? sunatResponse.message : 'Pendiente de validación — SUNAT no disponible',
+        sunatEstadoCp: sunatResponse?.data?.estadoCp ? parseInt(sunatResponse.data.estadoCp, 10) : null,
+        sunatEstadoRuc: sunatResponse?.data?.estadoRuc,
+        sunatCondDomiRuc: sunatResponse?.data?.condDomiRuc,
+        sunatObservaciones: sunatResponse?.data?.observaciones || [],
+        sunatErrorCode: sunatResponse?.errorCode,
       },
       include: { user: { select: { ruc: true, nombreEmpresa: true } } },
     });
@@ -69,14 +75,77 @@ export class ComprobantesService {
       .catch(() => { /* silencioso */ });
 
     return {
-      success: sunatResponse.success,
-      message: sunatResponse.message,
+      success: sunatResponse ? sunatResponse.success : null,
+      message: sunatResponse ? sunatResponse.message : 'Comprobante registrado. Se validará automáticamente cuando SUNAT esté disponible.',
       data: {
         id: comprobante.id,
         codigoAlfanumerico: comprobante.codigoAlfanumerico,
-        ...sunatResponse.data,
+        ...sunatResponse?.data,
       },
     };
+  }
+
+  /**
+   * Valida en orden de creación (FIFO) los comprobantes que quedaron pendientes
+   * porque SUNAT no estaba disponible al momento de crearlos. Llamado por
+   * SunatStatusService cada vez que detecta que SUNAT está arriba — si SUNAT se
+   * cae de nuevo a mitad del drenado, se detiene y el resto queda para el
+   * próximo intento (nunca se pierden, siguen con sunatSuccess: null en BD).
+   */
+  async drainPendingSunatValidations(): Promise<void> {
+    const pendientes = await this.prisma.comprobante.findMany({
+      where: { sunatSuccess: null },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (pendientes.length === 0) return;
+    this.logger.log(`Drenando ${pendientes.length} comprobante(s) pendiente(s) de validación SUNAT...`);
+
+    for (const comprobante of pendientes) {
+      let sunatResponse: Awaited<ReturnType<SunatService['validateComprobante']>>;
+      try {
+        sunatResponse = await this.sunatService.validateComprobante({
+          userId: comprobante.userId,
+          numRuc: comprobante.numRuc,
+          codComp: comprobante.codComp,
+          numeroSerie: comprobante.numeroSerie,
+          numero: comprobante.numero,
+          fechaEmision: this.formatFechaEmisionSunat(comprobante.fechaEmision),
+          monto: comprobante.monto ? Number(comprobante.monto) : undefined,
+        });
+      } catch (err) {
+        if (err instanceof SunatUnavailableError) {
+          this.logger.warn('SUNAT volvió a caerse a mitad del drenado — se reintentará en el próximo chequeo.');
+          return;
+        }
+        // Error real de validación de este comprobante puntual: se marca y se sigue con el resto.
+        sunatResponse = { success: false, message: (err as Error).message ?? 'Error al validar', errorCode: 'DRAIN_ERROR' } as any;
+      }
+
+      const updated = await this.prisma.comprobante.update({
+        where: { id: comprobante.id },
+        data: {
+          sunatSuccess: sunatResponse.success,
+          sunatMessage: sunatResponse.message,
+          sunatEstadoCp: sunatResponse.data?.estadoCp ? parseInt(sunatResponse.data.estadoCp, 10) : null,
+          sunatEstadoRuc: sunatResponse.data?.estadoRuc,
+          sunatCondDomiRuc: sunatResponse.data?.condDomiRuc,
+          sunatObservaciones: sunatResponse.data?.observaciones || [],
+          sunatErrorCode: sunatResponse.errorCode,
+        },
+        include: { user: { select: { ruc: true, nombreEmpresa: true } } },
+      });
+
+      this.searchService
+        .indexComprobante(this.toEsDocument(updated))
+        .catch(() => { /* silencioso */ });
+    }
+
+    this.logger.log(`Drenado completo: ${pendientes.length} comprobante(s) procesado(s).`);
+  }
+
+  private formatFechaEmisionSunat(fecha: Date): string {
+    return `${String(fecha.getUTCDate()).padStart(2, '0')}/${String(fecha.getUTCMonth() + 1).padStart(2, '0')}/${fecha.getUTCFullYear()}`;
   }
 
   async findAll(
@@ -110,6 +179,7 @@ export class ComprobantesService {
               total: esResult.total,
               validados: esResult.validados,
               rechazados: esResult.rechazados,
+              pendientes: esResult.total - esResult.validados - esResult.rechazados,
             },
           };
         }
@@ -125,7 +195,7 @@ export class ComprobantesService {
         ],
       };
       const skip = (page - 1) * limit;
-      const [items, searchTotal, searchValidados] = await Promise.all([
+      const [items, searchTotal, searchValidados, searchRechazados] = await Promise.all([
         this.prisma.comprobante.findMany({
           where: searchWhere,
           include: role === 'ADMIN' ? { user: { select: { ruc: true } } } : undefined,
@@ -135,6 +205,7 @@ export class ComprobantesService {
         }),
         this.prisma.comprobante.count({ where: searchWhere }),
         this.prisma.comprobante.count({ where: { ...searchWhere, sunatSuccess: true } }),
+        this.prisma.comprobante.count({ where: { ...searchWhere, sunatSuccess: false } }),
       ]);
 
       return {
@@ -142,19 +213,26 @@ export class ComprobantesService {
         total: searchTotal,
         page,
         totalPages: Math.ceil(searchTotal / limit),
-        stats: { total: searchTotal, validados: searchValidados, rechazados: searchTotal - searchValidados },
+        stats: {
+          total: searchTotal,
+          validados: searchValidados,
+          rechazados: searchRechazados,
+          pendientes: searchTotal - searchValidados - searchRechazados,
+        },
       };
     }
 
     // ── Sin búsqueda: stats globales desde BD ────────────────────────────────
-    const [totalScope, validadosScope] = await Promise.all([
+    const [totalScope, validadosScope, rechazadosScope] = await Promise.all([
       this.prisma.comprobante.count({ where: baseWhere }),
       this.prisma.comprobante.count({ where: { ...baseWhere, sunatSuccess: true } }),
+      this.prisma.comprobante.count({ where: { ...baseWhere, sunatSuccess: false } }),
     ]);
     const stats = {
       total: totalScope,
       validados: validadosScope,
-      rechazados: totalScope - validadosScope,
+      rechazados: rechazadosScope,
+      pendientes: totalScope - validadosScope - rechazadosScope,
     };
 
     // ── Sin búsqueda: paginación SQL normal ─────────────────────────────────
@@ -265,18 +343,23 @@ export class ComprobantesService {
       throw new ForbiddenException('No tienes permiso para revalidar este comprobante');
     }
 
-    const fecha = comprobante.fechaEmision;
-    const fechaEmision = `${String(fecha.getUTCDate()).padStart(2, '0')}/${String(fecha.getUTCMonth() + 1).padStart(2, '0')}/${fecha.getUTCFullYear()}`;
-
-    const sunatResponse = await this.sunatService.validateComprobante({
-      userId: comprobante.userId,
-      numRuc: comprobante.numRuc,
-      codComp: comprobante.codComp,
-      numeroSerie: comprobante.numeroSerie,
-      numero: comprobante.numero,
-      fechaEmision,
-      monto: comprobante.monto ? Number(comprobante.monto) : undefined,
-    });
+    let sunatResponse: Awaited<ReturnType<SunatService['validateComprobante']>>;
+    try {
+      sunatResponse = await this.sunatService.validateComprobante({
+        userId: comprobante.userId,
+        numRuc: comprobante.numRuc,
+        codComp: comprobante.codComp,
+        numeroSerie: comprobante.numeroSerie,
+        numero: comprobante.numero,
+        fechaEmision: this.formatFechaEmisionSunat(comprobante.fechaEmision),
+        monto: comprobante.monto ? Number(comprobante.monto) : undefined,
+      });
+    } catch (err) {
+      if (err instanceof SunatUnavailableError) {
+        throw new HttpException('SUNAT no está disponible en este momento. Se reintentará automáticamente.', HttpStatus.SERVICE_UNAVAILABLE);
+      }
+      throw err;
+    }
 
     const updated = await this.prisma.comprobante.update({
       where: { id },

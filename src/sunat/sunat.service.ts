@@ -4,6 +4,14 @@ import axios from 'axios';
 import { SunatTokenService } from './sunat-token.service';
 import { PrismaService } from '../database/prisma.service';
 
+/** SUNAT no respondió (timeout/red) — distinto de que SUNAT respondiera con un error real. */
+export class SunatUnavailableError extends Error {
+  constructor(message = 'SUNAT no está disponible (timeout o error de red)') {
+    super(message);
+    this.name = 'SunatUnavailableError';
+  }
+}
+
 interface ValidateComprobanteParams {
   userId: string;
   numRuc: string;
@@ -63,9 +71,14 @@ export class SunatService {
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        // Sin response = timeout o error de red: SUNAT no está disponible, no es
+        // un rechazo de validación. Se distingue para poder encolar en vez de fallar.
+        if (!error.response) {
+          throw new SunatUnavailableError();
+        }
         throw new HttpException(
-          error.response?.data || 'Error al validar comprobante en SUNAT',
-          error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+          error.response.data || 'Error al validar comprobante en SUNAT',
+          error.response.status,
         );
       }
       throw error;

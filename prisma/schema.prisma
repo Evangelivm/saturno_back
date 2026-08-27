@@ -66,7 +66,7 @@ model Comprobante {
   numeroOrden           String       @map("numero_orden") @db.VarChar(50)
   monto                 Decimal?     @db.Decimal(10, 2)
   codigoAlfanumerico    String    @unique @map("codigo_alfanumerico") @db.VarChar(10)
-  sunatSuccess          Boolean   @map("sunat_success")
+  sunatSuccess          Boolean?  @map("sunat_success")
   sunatMessage          String?   @map("sunat_message") @db.Text
   sunatEstadoCp         Int?      @map("sunat_estado_cp")
   sunatEstadoRuc        String?   @map("sunat_estado_ruc") @db.VarChar(2)

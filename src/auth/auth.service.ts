@@ -5,6 +5,7 @@ import { randomBytes } from 'crypto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -198,6 +199,21 @@ export class AuthService {
     });
 
     return { message: 'Contraseña reseteada exitosamente' };
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    const passwordValid = await argon2.verify(user.passwordHash, dto.currentPassword);
+    if (!passwordValid) {
+      throw new UnauthorizedException('La contraseña actual es incorrecta');
+    }
+
+    const passwordHash = await argon2.hash(dto.newPassword);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+
+    return { message: 'Contraseña actualizada exitosamente' };
   }
 
   async validateSession(token: string) {

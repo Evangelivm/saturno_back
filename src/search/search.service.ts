@@ -242,9 +242,10 @@ export class SearchService implements OnModuleInit {
           },
         },
         sort: buildComprobantesSort(sortBy, sortOrder),
-        // Agrega conteo de validados en la misma query (sin coste extra)
+        // Agrega conteo de validados/rechazados en la misma query (sin coste extra)
         aggs: {
           validados_count: { filter: { term: { sunatSuccess: true } } },
+          rechazados_count: { filter: { term: { sunatSuccess: false } } },
         },
       });
 
@@ -254,6 +255,7 @@ export class SearchService implements OnModuleInit {
           : (response.hits.total?.value ?? 0);
 
       const validados = (response.aggregations?.validados_count as any)?.doc_count ?? 0;
+      const rechazados = (response.aggregations?.rechazados_count as any)?.doc_count ?? 0;
 
       return {
         data: response.hits.hits.map((h) => {
@@ -268,7 +270,7 @@ export class SearchService implements OnModuleInit {
         page,
         totalPages: Math.ceil(total / limit),
         validados,
-        rechazados: total - validados,
+        rechazados,
       };
     } catch (err: any) {
       this.logger.warn(`Error en búsqueda ES (comprobantes): ${err.message}`);

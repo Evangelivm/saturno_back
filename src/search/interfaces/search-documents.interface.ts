@@ -7,7 +7,7 @@ export interface ComprobanteDocument {
   fechaEmision: string;
   monto: number | null;
   codigoAlfanumerico: string;
-  sunatSuccess: boolean;
+  sunatSuccess: boolean | null;
   sunatMessage: string | null;
   sunatEstadoCp: number | null;
   createdAt: string;

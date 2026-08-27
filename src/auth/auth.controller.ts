@@ -8,6 +8,8 @@ import type { LoginDto } from './dto/login.dto';
 import { LoginSchema } from './dto/login.dto';
 import type { RegisterDto } from './dto/register.dto';
 import { RegisterSchema } from './dto/register.dto';
+import type { ChangePasswordDto } from './dto/change-password.dto';
+import { ChangePasswordSchema } from './dto/change-password.dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 
 @Controller('api/auth')
@@ -110,5 +112,13 @@ export class AuthController {
   @Put('users/:id/reset-password')
   async resetPassword(@Param('id') id: string, @Req() request: any) {
     return this.authService.resetPassword(request.user.id, id);
+  }
+
+  @Put('me/password')
+  async changePassword(
+    @Body(new ZodValidationPipe(ChangePasswordSchema)) dto: ChangePasswordDto,
+    @Req() request: any,
+  ) {
+    return this.authService.changePassword(request.user.id, dto);
   }
 }
