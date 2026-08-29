@@ -35,11 +35,20 @@ export class ComprobantesService {
     // 1. Validar con SUNAT — si no está disponible (timeout/red), no bloquea el
     //    registro: se guarda como pendiente (sunatSuccess: null) y se valida solo
     //    cuando SunatStatusService detecte que SUNAT volvió (ver drainPendingSunatValidations).
+    //    Cualquier otro error (credenciales SUNAT no configuradas, rechazo de SUNAT,
+    //    etc.) tampoco bloquea el registro: se guarda marcado como no validado, con
+    //    el mensaje de error, igual que hace drainPendingSunatValidations.
     let sunatResponse: Awaited<ReturnType<SunatService['validateComprobante']>> | null = null;
     try {
       sunatResponse = await this.sunatService.validateComprobante({ userId, ...dto });
     } catch (err) {
-      if (!(err instanceof SunatUnavailableError)) throw err;
+      if (!(err instanceof SunatUnavailableError)) {
+        sunatResponse = {
+          success: false,
+          message: (err as Error).message ?? 'Error al validar comprobante en SUNAT',
+          errorCode: 'VALIDATION_ERROR',
+        } as any;
+      }
     }
 
     // 2. Generar código alfanumérico único
@@ -358,7 +367,8 @@ export class ComprobantesService {
       if (err instanceof SunatUnavailableError) {
         throw new HttpException('SUNAT no está disponible en este momento. Se reintentará automáticamente.', HttpStatus.SERVICE_UNAVAILABLE);
       }
-      throw err;
+      if (err instanceof HttpException) throw err;
+      throw new HttpException((err as Error).message ?? 'Error al validar comprobante en SUNAT', HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
     const updated = await this.prisma.comprobante.update({
