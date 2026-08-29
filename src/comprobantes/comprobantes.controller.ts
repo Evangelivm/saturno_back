@@ -5,6 +5,7 @@ import {
   Get,
   Delete,
   Body,
+  BadRequestException,
   Param,
   Query,
   Res,
@@ -162,6 +163,10 @@ export class ComprobantesController {
     @Body(new ZodValidationPipe(UploadFileSchema)) uploadFileDto: UploadFileDto,
     @UploadedFile() file: Express.Multer.File,
   ) {
+    if (!file) {
+      throw new BadRequestException('No se recibió ningún archivo');
+    }
+
     try {
       const key = buildR2Key(id, uploadFileDto.tipoArchivo, file.originalname);
       await this.r2Service.uploadObject(key, createReadStream(file.path), file.mimetype);
