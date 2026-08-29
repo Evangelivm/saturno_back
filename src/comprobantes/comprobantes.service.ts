@@ -5,6 +5,9 @@ import { SearchService } from '../search/search.service';
 import { ComprobanteDocument } from '../search/interfaces/search-documents.interface';
 import { CreateComprobanteDto } from './dto/create-comprobante.dto';
 import { generateAlphanumericCode } from '../common/utils/generate-code.util';
+import { GoogleDriveService } from '../google-drive/google-drive.service';
+import { R2Service } from '../r2/r2.service';
+import { esR2Key } from './utils/storage-key.util';
 
 // ── Orden por columna ────────────────────────────────────────────────────────
 const SORTABLE_FIELDS: Record<string, (order: 'asc' | 'desc') => any> = {
@@ -29,9 +32,39 @@ export class ComprobantesService {
     private readonly prisma: PrismaService,
     private readonly sunatService: SunatService,
     private readonly searchService: SearchService,
+    private readonly driveService: GoogleDriveService,
+    private readonly r2Service: R2Service,
   ) {}
 
   async create(userId: string, dto: CreateComprobanteDto) {
+    // 0. Evitar duplicados: si este usuario ya registró este mismo comprobante
+    //    (mismo RUC, tipo, serie y número), no se crea una fila nueva en cada
+    //    reintento — se devuelve el que ya existe para poder seguir con él
+    //    (p.ej. terminar de subir sus archivos).
+    const existente = await this.prisma.comprobante.findFirst({
+      where: {
+        userId,
+        numRuc: dto.numRuc,
+        codComp: dto.codComp,
+        numeroSerie: dto.numeroSerie,
+        numero: dto.numero,
+      },
+    });
+
+    if (existente) {
+      return {
+        success: existente.sunatSuccess,
+        message: existente.sunatMessage ?? 'Este comprobante ya estaba registrado.',
+        data: {
+          id: existente.id,
+          codigoAlfanumerico: existente.codigoAlfanumerico,
+          estadoCp: existente.sunatEstadoCp,
+          estadoRuc: existente.sunatEstadoRuc,
+          condDomiRuc: existente.sunatCondDomiRuc,
+        },
+      };
+    }
+
     // 1. Validar con SUNAT — si no está disponible (timeout/red), no bloquea el
     //    registro: se guarda como pendiente (sunatSuccess: null) y se valida solo
     //    cuando SunatStatusService detecte que SUNAT volvió (ver drainPendingSunatValidations).
@@ -264,6 +297,35 @@ export class ComprobantesService {
       throw new ForbiddenException('No tienes permiso para ver este comprobante');
     }
     return comprobante;
+  }
+
+  async remove(userId: string, role: string, id: string) {
+    if (role !== 'ADMIN') {
+      throw new ForbiddenException('Solo un administrador puede eliminar comprobantes');
+    }
+
+    const comprobante = await this.prisma.comprobante.findUnique({ where: { id } });
+    if (!comprobante) throw new NotFoundException('Comprobante no encontrado');
+
+    // Limpiar archivos asociados (mejor esfuerzo — no bloquea el borrado del registro)
+    const fileIds = [
+      comprobante.facturaFileId,
+      comprobante.xmlFileId,
+      comprobante.guiaFileId,
+      comprobante.ordenCompraFileId,
+    ].filter((f): f is string => !!f);
+
+    await Promise.allSettled(
+      fileIds.map((fileId) =>
+        esR2Key(fileId) ? this.r2Service.deleteObject(fileId) : this.driveService.deleteFile(fileId),
+      ),
+    );
+
+    await this.prisma.comprobante.delete({ where: { id } });
+
+    this.searchService.deleteComprobante(id).catch(() => { /* silencioso */ });
+
+    return { success: true, message: 'Comprobante eliminado correctamente' };
   }
 
   async updateFileInfo(

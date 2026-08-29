@@ -3,6 +3,7 @@ import {
   Post,
   Put,
   Get,
+  Delete,
   Body,
   Param,
   Query,
@@ -16,6 +17,7 @@ import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { tmpdir } from 'os';
 import { unlink } from 'fs/promises';
+import { createReadStream } from 'fs';
 import archiver from 'archiver';
 import pLimit from 'p-limit';
 import type { Readable } from 'stream';
@@ -29,6 +31,7 @@ async function streamToBuffer(stream: Readable): Promise<Buffer> {
 }
 import { ComprobantesService } from './comprobantes.service';
 import { GoogleDriveService } from '../google-drive/google-drive.service';
+import { R2Service } from '../r2/r2.service';
 import type { CreateComprobanteDto } from './dto/create-comprobante.dto';
 import { CreateComprobanteSchema } from './dto/create-comprobante.dto';
 import type { UploadFileDto } from './dto/upload-file.dto';
@@ -36,6 +39,7 @@ import { UploadFileSchema } from './dto/upload-file.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { esR2Key, buildR2Key } from './utils/storage-key.util';
 
 @Controller('api/comprobantes')
 @UseGuards(AuthGuard)
@@ -43,6 +47,7 @@ export class ComprobantesController {
   constructor(
     private readonly comprobantesService: ComprobantesService,
     private readonly driveService: GoogleDriveService,
+    private readonly r2Service: R2Service,
   ) {}
 
   @Post()
@@ -113,7 +118,7 @@ export class ComprobantesController {
       allFiles.map((file) =>
         limit(async () => {
           try {
-            const stream = await this.driveService.downloadStream(file.fileId);
+            const stream = await this.getFileStream(file.fileId);
             const buffer = await streamToBuffer(stream as any);
             archive.append(buffer, { name: `${file.folder}/${file.fileName}` });
           } catch (err: any) {
@@ -137,6 +142,11 @@ export class ComprobantesController {
     return this.comprobantesService.findOne(user.id, user.role, id);
   }
 
+  @Delete(':id')
+  async remove(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.comprobantesService.remove(user.id, user.role, id);
+  }
+
   @Post(':id/upload')
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
@@ -153,14 +163,15 @@ export class ComprobantesController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     try {
-      const driveFile = await this.driveService.uploadFile(file, user.id);
+      const key = buildR2Key(id, uploadFileDto.tipoArchivo, file.originalname);
+      await this.r2Service.uploadObject(key, createReadStream(file.path), file.mimetype);
 
       return this.comprobantesService.updateFileInfo(
         user.id,
         user.role,
         id,
         uploadFileDto.tipoArchivo,
-        driveFile.id,
+        key,
         file.originalname,
       );
     } finally {
@@ -200,7 +211,14 @@ export class ComprobantesController {
       return;
     }
 
-    const { stream, mimeType, name } = await this.driveService.downloadFileStream(fileId);
+    const fileNameMap: Record<string, string | null> = {
+      factura: comprobante.facturaFileName,
+      xml: comprobante.xmlFileName,
+      guia: comprobante.guiaFileName,
+      ordenCompra: comprobante.ordenCompraFileName,
+    };
+
+    const { stream, mimeType, name } = await this.fetchFile(fileId, fileNameMap[tipo] || 'archivo');
     res.set({
       'Content-Type': mimeType,
       'Content-Disposition': `attachment; filename="${name}"`,
@@ -217,11 +235,11 @@ export class ComprobantesController {
     const comprobante = await this.comprobantesService.findOne(user.id, user.role, id);
 
     const files = [
-      { tipo: 'factura', fileId: comprobante.facturaFileId },
-      { tipo: 'xml', fileId: comprobante.xmlFileId },
-      { tipo: 'guia', fileId: comprobante.guiaFileId },
-      { tipo: 'ordenCompra', fileId: comprobante.ordenCompraFileId },
-    ].filter((f): f is { tipo: string; fileId: string } => !!f.fileId);
+      { tipo: 'factura', fileId: comprobante.facturaFileId, fileName: comprobante.facturaFileName },
+      { tipo: 'xml', fileId: comprobante.xmlFileId, fileName: comprobante.xmlFileName },
+      { tipo: 'guia', fileId: comprobante.guiaFileId, fileName: comprobante.guiaFileName },
+      { tipo: 'ordenCompra', fileId: comprobante.ordenCompraFileId, fileName: comprobante.ordenCompraFileName },
+    ].filter((f): f is { tipo: string; fileId: string; fileName: string | null } => !!f.fileId);
 
     if (files.length === 0) {
       res.status(404).json({ message: 'No hay archivos disponibles' });
@@ -241,12 +259,33 @@ export class ComprobantesController {
     await Promise.allSettled(
       files.map((file) =>
         limit(async () => {
-          const { stream, name } = await this.driveService.downloadFileStream(file.fileId);
-          archive.append(stream, { name });
+          const { stream, name } = await this.fetchFile(file.fileId, file.fileName || file.tipo);
+          archive.append(stream as any, { name });
         }),
       ),
     );
 
     archive.finalize();
+  }
+
+  // ── Lectura de archivos: R2 para lo subido después de la migración, Drive para
+  //    lo subido antes (ver esR2Key) ─────────────────────────────────────────
+  private async getFileStream(fileId: string): Promise<Readable> {
+    if (esR2Key(fileId)) {
+      const { stream } = await this.r2Service.getObjectStream(fileId);
+      return stream;
+    }
+    return this.driveService.downloadStream(fileId);
+  }
+
+  private async fetchFile(
+    fileId: string,
+    fallbackName: string,
+  ): Promise<{ stream: Readable; mimeType: string; name: string }> {
+    if (esR2Key(fileId)) {
+      const { stream, contentType } = await this.r2Service.getObjectStream(fileId);
+      return { stream, mimeType: contentType || 'application/octet-stream', name: fallbackName };
+    }
+    return this.driveService.downloadFileStream(fileId);
   }
 }
