@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
+import type { SunatCredential } from '@prisma/client';
 import axios from 'axios';
 
 @Injectable()
@@ -15,17 +16,24 @@ export class SunatTokenService {
       'https://api-seguridad.sunat.gob.pe/v1/clientesextranet';
   }
 
-  async getValidToken(userId: string): Promise<string> {
+  // Todos los usuarios validan comprobantes con la misma credencial SUNAT
+  // compartida (la registrada por el Admin) — no cada uno con la suya propia.
+  async getValidToken(): Promise<string> {
+    const credential = await this.prisma.sunatCredential.findFirst({
+      where: { isActive: true },
+    });
+
+    if (!credential) {
+      throw new Error('No hay credenciales SUNAT activas configuradas en el sistema');
+    }
+
     // 1. Buscar token en cache que no haya expirado
     const cachedToken = await this.prisma.sunatToken.findFirst({
       where: {
-        userId,
+        credentialId: credential.id,
         expiresAt: {
           gt: new Date(),
         },
-      },
-      include: {
-        credential: true,
       },
     });
 
@@ -34,23 +42,11 @@ export class SunatTokenService {
     }
 
     // 2. Si no hay token válido, generar uno nuevo
-    return this.generateNewToken(userId);
+    return this.generateNewToken(credential);
   }
 
-  private async generateNewToken(userId: string): Promise<string> {
-    // 1. Obtener credenciales activas del usuario
-    const credential = await this.prisma.sunatCredential.findFirst({
-      where: {
-        userId,
-        isActive: true,
-      },
-    });
-
-    if (!credential) {
-      throw new Error('No se encontraron credenciales SUNAT activas para el usuario');
-    }
-
-    // 2. Request a SUNAT para obtener token
+  private async generateNewToken(credential: SunatCredential): Promise<string> {
+    // 1. Request a SUNAT para obtener token
     const url = `${this.TOKEN_URL}/${credential.clientId}/oauth2/token/`;
 
     const params = new URLSearchParams({
@@ -75,7 +71,7 @@ export class SunatTokenService {
     await this.prisma.sunatToken.upsert({
       where: {
         userId_credentialId: {
-          userId,
+          userId: credential.userId,
           credentialId: credential.id,
         },
       },
@@ -85,7 +81,7 @@ export class SunatTokenService {
         expiresAt,
       },
       create: {
-        userId,
+        userId: credential.userId,
         credentialId: credential.id,
         accessToken: access_token,
         tokenType: token_type,

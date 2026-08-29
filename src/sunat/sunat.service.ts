@@ -37,8 +37,8 @@ export class SunatService {
 
   async validateComprobante(params: ValidateComprobanteParams) {
     try {
-      // 1. Obtener token válido (cachear si no expiró)
-      const token = await this.tokenService.getValidToken(params.userId);
+      // 1. Obtener token válido (cachear si no expiró) — compartido entre todos los usuarios
+      const token = await this.tokenService.getValidToken();
 
       // 2. Obtener RUC de tu empresa desde .env (requerido por el API de SUNAT)
       const ruc = this.configService.get('RUC');
