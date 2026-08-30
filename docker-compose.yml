@@ -9,9 +9,27 @@ services:
       - .env
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      - paddleocr
+    networks:
+      - saturno_network
+
+  paddleocr:
+    build:
+      context: ./paddleocr
+      dockerfile: Dockerfile
+    container_name: saturno_paddleocr
+    restart: unless-stopped
+    expose:
+      - "8866"
+    volumes:
+      - paddleocr_models:/root/.paddleocr
     networks:
       - saturno_network
 
 networks:
   saturno_network:
     external: true
+
+volumes:
+  paddleocr_models:

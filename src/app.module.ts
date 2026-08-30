@@ -11,6 +11,7 @@ import { SunatStatusModule } from './sunat-status/sunat-status.module';
 import { HistorialLegacyModule } from './historial-legacy/historial-legacy.module';
 import { SearchModule } from './search/search.module';
 import { ReportesModule } from './reportes/reportes.module';
+import { OcrModule } from './ocr/ocr.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { ReportesModule } from './reportes/reportes.module';
     SunatStatusModule,
     HistorialLegacyModule,
     ReportesModule,
+    OcrModule,
   ],
   controllers: [AppController],
   providers: [AppService],
