@@ -5,6 +5,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -13,6 +14,7 @@ import { tmpdir } from 'os';
 import { unlink, readFile } from 'fs/promises';
 import { OcrService } from './ocr.service';
 import { AuthGuard } from '../auth/guards/auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('api/ocr')
 @UseGuards(AuthGuard)
@@ -29,7 +31,12 @@ export class OcrController {
     }),
     limits: { fileSize: 15 * 1024 * 1024 }, // 15MB
   }))
-  async extract(@UploadedFile() file: Express.Multer.File) {
+  async extract(@CurrentUser() user: any, @UploadedFile() file: Express.Multer.File) {
+    // OCR en fase de pruebas — solo admin mientras se valida la calidad de extracción.
+    if (user.role !== 'ADMIN') {
+      throw new ForbiddenException('Esta función todavía no está disponible para tu cuenta');
+    }
+
     if (!file) {
       throw new BadRequestException('No se recibió ningún archivo');
     }
