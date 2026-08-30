@@ -199,6 +199,7 @@ export class ComprobantesController {
     @CurrentUser() user: any,
     @Param('id') id: string,
     @Param('tipo') tipo: string,
+    @Query('inline') inline: string | undefined,
     @Res() res: any,
   ) {
     const comprobante = await this.comprobantesService.findOne(user.id, user.role, id);
@@ -224,9 +225,10 @@ export class ComprobantesController {
     };
 
     const { stream, mimeType, name } = await this.fetchFile(fileId, fileNameMap[tipo] || 'archivo');
+    const disposition = inline === 'true' ? 'inline' : 'attachment';
     res.set({
       'Content-Type': mimeType,
-      'Content-Disposition': `attachment; filename="${name}"`,
+      'Content-Disposition': `${disposition}; filename="${name}"`,
     });
     stream.pipe(res);
   }
