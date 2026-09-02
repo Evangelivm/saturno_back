@@ -129,4 +129,23 @@ export class DuckDbService implements OnModuleInit, OnModuleDestroy {
       connection.closeSync();
     }
   }
+
+  /**
+   * Igual que queryRows, pero sin la conversión a JSON de cada celda — las columnas
+   * DATE/TIMESTAMP vuelven envueltas (DuckDBDateValue/DuckDBTimestampValue) en vez de
+   * string. Esas envolturas funcionan bien con `new Date(valor)` (su toString() da
+   * "2024-04-10" o "2024-04-10 10:20:30", que Date parsea directo) pero NO deben
+   * exponerse tal cual en una respuesta JSON de la API (JSON.stringify las serializa
+   * como {days:N}, no como fecha). Usar solo para datos que se consumen en el propio
+   * backend (ej. armar un Excel), nunca para results que van directo al cliente.
+   */
+  async queryRowsRaw<T = Record<string, unknown>>(sql: string, params?: Record<string, DuckDBValue>): Promise<T[]> {
+    const connection = await this.instance.connect();
+    try {
+      const reader = params ? await connection.runAndReadAll(sql, params) : await connection.runAndReadAll(sql);
+      return reader.getRowObjects() as T[];
+    } finally {
+      connection.closeSync();
+    }
+  }
 }

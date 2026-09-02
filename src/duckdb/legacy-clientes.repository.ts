@@ -21,6 +21,17 @@ const LEGACY_COLUMNS = [
   'numero_orden_compra', 'nombre_empresa', 'observaciones_escritas',
 ];
 
+// Columnas que usa generateLegacyReport (reportes.service.ts) para armar el Excel — único consumidor de findByDateRange.
+// SELECT * ahí traía las ~55 columnas de la tabla por cada fila y en rangos grandes (ej. un año, 11k+ filas)
+// terminaba pesando más que la ganancia de tener la fecha ya parseada. Seleccionar solo lo que se usa lo evita.
+const REPORT_COLUMNS = [
+  'id', 'numRuc', 'nombre_empresa', 'codComp', 'numeroSerie', 'numero',
+  'fechaEmision', 'fecha_vencimiento', 'monto', 'moneda', 'estadoCp',
+  'estado_contabilidad', 'estado_tesoreria', 'fecha_pago_tesoreria',
+  'tipo_facturacion', 'numero_orden_compra', 'condPago', 'fecha_estimada_pago',
+  'fecha_ingreso_sistema', 'observaciones_escritas', 'factdoc', 'xmldoc', 'guiadoc', 'pedidodoc',
+];
+
 const ORDER_BY_MAP: Record<string, (order: 'ASC' | 'DESC') => string> = {
   numero: (o) => `numeroSerie ${o}, numero ${o}`,
   empresa: (o) => `nombre_empresa ${o}`,
@@ -91,10 +102,18 @@ export class LegacyClientesRepository {
     };
   }
 
-  /** SELECT * en el rango — cubre tanto generateLegacyReport (todas las columnas) como fetchLegacyRecords (subset). */
+  /**
+   * Filas del rango con las columnas que necesita generateLegacyReport (único consumidor).
+   * Usa queryRowsRaw (sin conversión JSON) — el resultado nunca sale directo como
+   * respuesta JSON, solo alimenta ExcelJS, así que las fechas envueltas no son problema
+   * y evitarnos convertir columnas de más es lo que hace rápido este camino en rangos grandes.
+   */
   async findByDateRange(filter: RucDateFilter): Promise<any[]> {
     const { where, params } = this.buildRucDateWhere(filter);
-    return this.duckDb.queryRows(`SELECT * FROM clientes2024 ${where} ORDER BY id DESC`, params);
+    return this.duckDb.queryRowsRaw(
+      `SELECT ${REPORT_COLUMNS.join(', ')} FROM clientes2024 ${where} ORDER BY id DESC`,
+      params,
+    );
   }
 
   async getR2Key(id: number, tipo: TipoDoc): Promise<string | undefined> {
