@@ -17,6 +17,10 @@ RUN npm cache clean --force
 # Instala las dependencias
 RUN npm install
 
+# Pre-descarga la extensión mysql de DuckDB (usada por DuckDbService) para no
+# depender de acceso a red en el primer arranque del contenedor en producción.
+RUN node -e "const { DuckDBInstance } = require('@duckdb/node-api'); DuckDBInstance.create(':memory:').then((i) => i.connect()).then((c) => c.run('INSTALL mysql')).then(() => process.exit(0)).catch((e) => { console.error(e); process.exit(1); })"
+
 # Genera ambos clientes de Prisma
 RUN npx prisma generate
 RUN npm run prisma:generate:second

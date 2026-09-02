@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaSecondService } from '../database/prisma-second.service';
 import { PrismaService } from '../database/prisma.service';
 import { SearchService } from '../search/search.service';
 import { GoogleDriveService } from '../google-drive/google-drive.service';
 import { R2Service } from '../r2/r2.service';
-import { LegacyR2IndexService } from '../r2/legacy-r2-index.service';
+import { LegacyClientesRepository, TipoDoc } from '../duckdb/legacy-clientes.repository';
 import * as ExcelJS from 'exceljs';
 import archiver = require('archiver');
 import pLimit from 'p-limit';
@@ -22,12 +21,11 @@ async function streamToBuffer(stream: Readable): Promise<Buffer> {
 @Injectable()
 export class ReportesService {
   constructor(
-    private readonly prismaSecond: PrismaSecondService,
     private readonly prisma: PrismaService,
     private readonly searchService: SearchService,
     private readonly driveService: GoogleDriveService,
     private readonly r2Service: R2Service,
-    private readonly legacyR2Index: LegacyR2IndexService,
+    private readonly legacyClientes: LegacyClientesRepository,
   ) {}
 
   async searchEmpresas(q: string): Promise<{ ruc: string; nombre: string }[]> {
@@ -35,16 +33,8 @@ export class ReportesService {
     const esResults = await this.searchService.searchEmpresas(q);
     if (esResults.length > 0) return esResults;
 
-    // Fallback SQL sobre clientes2024
-    const like = `%${q}%`;
-    const rows: any[] = await (this.prismaSecond as any).$queryRawUnsafe(
-      `SELECT DISTINCT numRuc, nombre_empresa
-       FROM clientes2024
-       WHERE numRuc LIKE ? OR nombre_empresa LIKE ?
-       LIMIT 20`,
-      like, like,
-    );
-    return rows.map((r) => ({ ruc: r.numRuc ?? '', nombre: r.nombre_empresa ?? r.numRuc ?? '' }));
+    // Fallback: clientes2024 vía DuckDB (evita el full scan directo a MySQL)
+    return this.legacyClientes.search(q);
   }
 
   async generateLegacyReport(ruc: string, desde?: string, hasta?: string): Promise<{ buffer: ExcelJS.Buffer; filename: string }> {
@@ -52,24 +42,7 @@ export class ReportesService {
     const userRecord = await this.prisma.user.findUnique({ where: { ruc }, select: { nombreEmpresa: true } });
     const nombreEmpresa = userRecord?.nombreEmpresa ?? ruc;
 
-    // fechaEmision is stored as "dd/MM/yyyy" → convertir fechas a ese formato para comparar
-    const filters: string[] = [`numRuc = '${ruc}'`];
-
-    if (desde) {
-      // desde es "yyyy-MM-dd", convertir a "dd/MM/yyyy"
-      const [ay, am, ad] = desde.split('-');
-      const desdeStr = `${ad}/${am}/${ay}`;
-      filters.push(`STR_TO_DATE(fechaEmision, '%d/%m/%Y') >= STR_TO_DATE('${desdeStr}', '%d/%m/%Y')`);
-    }
-    if (hasta) {
-      const [by, bm, bd] = hasta.split('-');
-      const hastaStr = `${bd}/${bm}/${by}`;
-      filters.push(`STR_TO_DATE(fechaEmision, '%d/%m/%Y') <= STR_TO_DATE('${hastaStr}', '%d/%m/%Y')`);
-    }
-
-    const records: any[] = await (this.prismaSecond as any).$queryRawUnsafe(
-      `SELECT * FROM clientes2024 WHERE ${filters.join(' AND ')} ORDER BY id DESC`
-    );
+    const records = await this.legacyClientes.findByDateRange({ ruc, desde, hasta });
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Reporte');
@@ -168,35 +141,11 @@ export class ReportesService {
     return { buffer, filename };
   }
 
-  private readonly campoMap: Record<string, string> = {
-    factura: 'factdoc',
-    xml:     'xmldoc',
-    guia:    'guiadoc',
-    pedido:  'pedidodoc',
-  };
-
-  private async fetchLegacyRecords(desde: string, hasta: string, ruc?: string): Promise<any[]> {
-    const filters: string[] = [];
-    if (ruc) filters.push(`numRuc = '${ruc}'`);
-    if (desde) {
-      const [ay, am, ad] = desde.split('-');
-      filters.push(`STR_TO_DATE(fechaEmision, '%d/%m/%Y') >= STR_TO_DATE('${ad}/${am}/${ay}', '%d/%m/%Y')`);
-    }
-    if (hasta) {
-      const [by, bm, bd] = hasta.split('-');
-      filters.push(`STR_TO_DATE(fechaEmision, '%d/%m/%Y') <= STR_TO_DATE('${bd}/${bm}/${by}', '%d/%m/%Y')`);
-    }
-
-    const where = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
-    return (this.prismaSecond as any).$queryRawUnsafe(
-      `SELECT id, numRuc, numeroSerie, numero, factdoc, xmldoc, guiadoc, pedidodoc FROM clientes2024 ${where} ORDER BY id DESC`
-    );
-  }
-
   /**
    * Suma los tamaños originales (Drive) de los documentos que va a incluir el zip,
-   * usando el índice en memoria — sin tocar red. Se usa en el front para calcular
-   * un % de progreso real en vez de solo mostrar MB acumulados sin referencia.
+   * usando el índice R2 (vía DuckDB, sobre los JSONL de la migración) — sin tocar
+   * red. Se usa en el front para calcular un % de progreso real en vez de solo
+   * mostrar MB acumulados sin referencia.
    * Es un estimado: el zip comprime un poco, así que el peso final baja algo
    * respecto a esta suma (más en XML, casi nada en PDF/imágenes ya comprimidos).
    */
@@ -206,27 +155,7 @@ export class ReportesService {
     tipos: string[],
     ruc?: string,
   ): Promise<{ totalBytes: number; totalArchivos: number; archivosSinTamano: number }> {
-    const records = await this.fetchLegacyRecords(desde, hasta, ruc);
-
-    let totalBytes = 0;
-    let totalArchivos = 0;
-    let archivosSinTamano = 0;
-
-    for (const rec of records) {
-      for (const tipo of tipos) {
-        const fileName: string | null = rec[this.campoMap[tipo]] ?? null;
-        if (!fileName) continue;
-        totalArchivos++;
-        const size = this.legacyR2Index.getSize(rec.id, tipo as any);
-        if (size === undefined) {
-          archivosSinTamano++;
-        } else {
-          totalBytes += size;
-        }
-      }
-    }
-
-    return { totalBytes, totalArchivos, archivosSinTamano };
+    return this.legacyClientes.estimateBatchSize({ ruc, desde, hasta }, tipos as TipoDoc[]);
   }
 
   async legacyBatch(
@@ -236,8 +165,7 @@ export class ReportesService {
     tipos: string[],
     ruc?: string,
   ): Promise<void> {
-    const records = await this.fetchLegacyRecords(desde, hasta, ruc);
-    const campoMap = this.campoMap;
+    const fileRefs = await this.legacyClientes.getFileRefs({ ruc, desde, hasta }, tipos as TipoDoc[]);
 
     // Streaming directo a la respuesta: si se arma el zip en un archivo temporal
     // primero (como antes), el cliente no recibe ni un byte hasta que TODO el
@@ -261,39 +189,33 @@ export class ReportesService {
     // local (bandwidth-bound ahí). 70 sin medir aún en el VPS de producción.
     const limit = pLimit(70);
     await Promise.allSettled(
-      records.flatMap((rec) => {
-        const folder = `${rec.numeroSerie ?? ''}-${rec.numero ?? ''}`.trim() || `id-${rec.id}`;
-        return tipos.map((tipo) =>
-          limit(async () => {
-            const campo = campoMap[tipo];
-            const fileName: string | null = rec[campo] ?? null;
-            if (!fileName) return;
+      fileRefs.map((ref) =>
+        limit(async () => {
+          const folder = `${ref.numeroSerie ?? ''}-${ref.numero ?? ''}`.trim() || `id-${ref.id}`;
 
-            try {
-              const r2Key = this.legacyR2Index.getKey(rec.id, tipo as any);
-              if (r2Key) {
-                const { stream } = await this.r2Service.getObjectStream(r2Key);
-                const buffer = await streamToBuffer(stream as any);
-                archive.append(buffer, { name: `${folder}/${fileName}` });
-                return;
-              }
-
-              const file = await this.driveService.findFileInLegacyFolder(fileName, tipo);
-              if (!file) {
-                errores.push(`[NO ENCONTRADO] ${folder}/${fileName}`);
-                return;
-              }
-              const stream = await this.driveService.downloadStream(file.id);
+          try {
+            if (ref.r2Key) {
+              const { stream } = await this.r2Service.getObjectStream(ref.r2Key);
               const buffer = await streamToBuffer(stream as any);
-              archive.append(buffer, { name: `${folder}/${fileName}` });
-            } catch (err: any) {
-              const msg = `[ERROR] ${folder}/${fileName} — ${err?.message ?? err}`;
-              errores.push(msg);
-              console.error(msg);
+              archive.append(buffer, { name: `${folder}/${ref.fileName}` });
+              return;
             }
-          }),
-        );
-      }),
+
+            const file = await this.driveService.findFileInLegacyFolder(ref.fileName, ref.tipo);
+            if (!file) {
+              errores.push(`[NO ENCONTRADO] ${folder}/${ref.fileName}`);
+              return;
+            }
+            const stream = await this.driveService.downloadStream(file.id);
+            const buffer = await streamToBuffer(stream as any);
+            archive.append(buffer, { name: `${folder}/${ref.fileName}` });
+          } catch (err: any) {
+            const msg = `[ERROR] ${folder}/${ref.fileName} — ${err?.message ?? err}`;
+            errores.push(msg);
+            console.error(msg);
+          }
+        }),
+      ),
     );
 
     if (errores.length > 0) {
