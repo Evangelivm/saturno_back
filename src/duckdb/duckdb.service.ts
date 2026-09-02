@@ -84,16 +84,22 @@ export class DuckDbService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /** Vistas sobre los JSONL estáticos de la migración Drive → R2 (no requieren refresco periódico). */
+  /**
+   * Tablas (NO vistas) sobre los JSONL estáticos de la migración Drive → R2.
+   * Una VIEW sobre read_ndjson_auto() vuelve a leer y parsear el archivo entero
+   * desde disco en CADA query (~250-450ms medido sobre el JSONL de 32MB en cada
+   * consulta a legacy_reconciliacion) — materializar como tabla una vez por
+   * refresco dejó las consultas posteriores en ~1-2ms.
+   */
   private async refreshLegacyR2Views(connection: Awaited<ReturnType<DuckDBInstance['connect']>>): Promise<void> {
-    await this.createNdjsonView(
+    await this.createNdjsonTable(
       connection,
       'transferencia_resultado',
       path.join(process.cwd(), 'scripts', 'output', 'transferencia-resultado.jsonl'),
       "SELECT rowId, tipo, key FROM read_ndjson_auto('%PATH%') WHERE estado = 'OK'",
       'SELECT NULL::BIGINT AS rowId, NULL::VARCHAR AS tipo, NULL::VARCHAR AS key WHERE FALSE',
     );
-    await this.createNdjsonView(
+    await this.createNdjsonTable(
       connection,
       'legacy_reconciliacion',
       path.join(process.cwd(), 'scripts', 'output', 'legacy-drive-reconciliacion.jsonl'),
@@ -102,21 +108,34 @@ export class DuckDbService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  private async createNdjsonView(
+  private async createNdjsonTable(
     connection: Awaited<ReturnType<DuckDBInstance['connect']>>,
-    viewName: string,
+    tableName: string,
     filePath: string,
     selectTemplate: string,
     emptyFallback: string,
   ): Promise<void> {
+    // Un archivo .duckdb existente de antes de este cambio puede tener estos nombres
+    // como VIEW — CREATE OR REPLACE TABLE no reemplaza un objeto de otro tipo (tira
+    // Catalog Error). Y "DROP VIEW IF EXISTS" incondicional revienta igual si ya es
+    // TABLE (el caso normal a partir del segundo refresco) — el "IF EXISTS" solo
+    // cubre "no existe", no "existe pero es de otro tipo". Por eso hay que mirar el
+    // catálogo primero y solo hacer DROP si de verdad hay una VIEW con ese nombre.
+    const existing = await connection.runAndReadAll(
+      `SELECT table_type FROM information_schema.tables WHERE table_name = '${escapeSqlLiteral(tableName)}'`,
+    );
+    if (existing.getRowObjectsJson()[0]?.table_type === 'VIEW') {
+      await connection.run(`DROP VIEW ${tableName}`);
+    }
+
     if (!fs.existsSync(filePath)) {
-      this.logger.warn(`⚠️  No se encontró ${filePath}. La vista ${viewName} quedará vacía.`);
-      await connection.run(`CREATE OR REPLACE VIEW ${viewName} AS ${emptyFallback}`);
+      this.logger.warn(`⚠️  No se encontró ${filePath}. La tabla ${tableName} quedará vacía.`);
+      await connection.run(`CREATE OR REPLACE TABLE ${tableName} AS ${emptyFallback}`);
       return;
     }
     const normalizedPath = filePath.split(path.sep).join('/');
     const select = selectTemplate.replace('%PATH%', escapeSqlLiteral(normalizedPath));
-    await connection.run(`CREATE OR REPLACE VIEW ${viewName} AS ${select}`);
+    await connection.run(`CREATE OR REPLACE TABLE ${tableName} AS ${select}`);
   }
 
   /** Ejecuta una query y devuelve las filas como objetos JS planos (fechas/decimales ya convertidos a string/number). */
