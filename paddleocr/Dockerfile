@@ -10,6 +10,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
+# El wheel estándar de paddlepaddle está compilado para CPUs con AVX; en un
+# host sin AVX el proceso muere con SIGILL (exit code 132) al arrancar.
+# Se instala la variante "noavx" para ese caso.
+RUN pip install --no-cache-dir paddlepaddle==2.6.2 -f https://www.paddlepaddle.org.cn/whl/linux/mkl/noavx/stable.html
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
