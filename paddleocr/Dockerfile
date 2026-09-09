@@ -22,6 +22,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install --no-cache-dir \
     https://paddle-wheel.bj.bcebos.com/2.4.2/linux/linux-cpu-openblas-noavx/paddlepaddle-2.4.2-cp38-cp38-linux_x86_64.whl
 
+# El wheel binario de "lmdb" (dependencia transitiva de paddleocr, solo usada
+# por su loader de datasets de entrenamiento, no en inferencia) es incompatible
+# con esta imagen: su extensión .so precompilada da "undefined symbol:
+# Py_SET_REFCNT" y el fallback a cffi falla porque el wheel no trae sus fuentes
+# (preload.h). Se fuerza a compilar desde el sdist contra este mismo intérprete.
+RUN pip install --no-cache-dir --no-binary lmdb "lmdb==1.4.1"
+
 # paddleocr 2.6.1.3 es la versión contemporánea a paddle 2.4.2 (modelos
 # PP-OCRv3); versiones 2.7+ de paddleocr apuntan a PP-OCRv4 y no están
 # garantizadas con paddle tan viejo.
