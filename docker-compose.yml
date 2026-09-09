@@ -21,6 +21,14 @@ services:
       dockerfile: Dockerfile
     container_name: saturno_paddleocr
     restart: unless-stopped
+    environment:
+      # Evita un bug de OpenBLAS donde su optimización "sgemm_direct" para
+      # matrices pequeñas usa instrucciones más nuevas que las que soporta la
+      # CPU, sin respetar la detección automática, provocando "Illegal
+      # instruction" (SIGILL). La CPU del VPS ("QEMU Virtual CPU 2.5+") solo
+      # tiene hasta SSE3 (flag "pni"): sin ssse3/sse4/avx. PRESCOTT es el
+      # target de OpenBLAS que coincide exactamente con eso.
+      - OPENBLAS_CORETYPE=PRESCOTT
     expose:
       - "8866"
     volumes:
