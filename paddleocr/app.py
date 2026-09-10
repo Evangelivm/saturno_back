@@ -5,14 +5,24 @@ import io
 import fitz  # PyMuPDF
 import numpy as np
 from fastapi import FastAPI, File, HTTPException, UploadFile
-from paddleocr import PaddleOCR
 from PIL import Image
+from rapidocr import RapidOCR
 
 app = FastAPI(title="Saturno OCR")
 
 # Se carga una sola vez al iniciar el contenedor — cargarlo por request sería
 # lentísimo (implica leer los pesos del modelo cada vez).
-ocr = PaddleOCR(use_angle_cls=True, lang="es")
+#
+# Se usa rapidocr (ONNXRuntime) en vez del motor nativo de PaddlePaddle: la
+# CPU de este VPS ("QEMU Virtual CPU 2.5+") solo soporta hasta SSE3, y el
+# kernel de convolución depthwise de PaddlePaddle 2.4.2 crashea con "Illegal
+# instruction" (SIGILL) en cualquier CPU sin SSE4/AVX, incluso con el wheel
+# "noavx". ONNXRuntime hace detección de CPU correcta y no tiene ese problema.
+#
+# lang_type="latin" reproduce el mismo modelo de reconocimiento que usaba
+# PaddleOCR con lang="es" — PaddleOCR también enruta "es" al modelo
+# multilenguaje compartido "latin" (ver rec_model_dir=".../rec/latin/...").
+ocr = RapidOCR(params={"Rec.lang_type": "latin"})
 
 
 def pdf_to_images(data: bytes) -> list[Image.Image]:
@@ -49,14 +59,17 @@ async def extract_text(file: UploadFile = File(...)):
     full_text_parts = []
 
     for i, image in enumerate(page_images, start=1):
-        result = ocr.ocr(np.array(image), cls=True)
+        result = ocr(np.array(image))
         lines = []
         page_text_parts = []
 
-        # result[0] puede ser None si la página no tiene texto detectable
-        for line in (result[0] or []):
-            box, (text, confidence) = line
-            lines.append({"text": text, "confidence": round(float(confidence), 4), "box": box})
+        boxes = result.boxes if result.boxes is not None else []
+        txts = result.txts if result.txts is not None else []
+        scores = result.scores if result.scores is not None else []
+
+        for box, text, confidence in zip(boxes, txts, scores):
+            box_list = box.tolist() if hasattr(box, "tolist") else box
+            lines.append({"text": text, "confidence": round(float(confidence), 4), "box": box_list})
             page_text_parts.append(text)
 
         page_text = "\n".join(page_text_parts)
