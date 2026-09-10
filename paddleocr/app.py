@@ -19,18 +19,10 @@ app = FastAPI(title="Saturno OCR")
 # instruction" (SIGILL) en cualquier CPU sin SSE4/AVX, incluso con el wheel
 # "noavx". ONNXRuntime hace detección de CPU correcta y no tiene ese problema.
 #
-# lang_type="latin" reproduce el mismo modelo de reconocimiento que usaba
-# PaddleOCR con lang="es" — PaddleOCR también enruta "es" al modelo
-# multilenguaje compartido "latin" (ver rec_model_dir=".../rec/latin/...").
-# Se fija ocr_version/model_type porque el default de esta librería (PP-OCRv6
-# "small") no tiene variante "latin" — solo existe para PP-OCRv5 "mobile".
-ocr = RapidOCR(
-    params={
-        "Rec.lang_type": "latin",
-        "Rec.ocr_version": "PP-OCRv5",
-        "Rec.model_type": "mobile",
-    }
-)
+# "es" está soportado directamente por el modelo multilenguaje PP-OCRv6 de
+# esta librería (a diferencia de PaddleOCR viejo, no hace falta pedir un
+# bucket compartido tipo "latin").
+ocr = RapidOCR(params={"Rec.lang_type": "es"})
 
 
 def pdf_to_images(data: bytes) -> list[Image.Image]:
