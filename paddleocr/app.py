@@ -5,10 +5,36 @@ import io
 import fitz  # PyMuPDF
 import numpy as np
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from markitdown import MarkItDown, StreamInfo
 from PIL import Image
 from rapidocr import RapidOCR
 
 app = FastAPI(title="Saturno OCR")
+
+# Umbral para decidir si un PDF ya trae texto embebido (generado digitalmente,
+# ej. facturas electrónicas de SUNAT) o si es una imagen escaneada sin capa de
+# texto. markitdown/pdfminer devuelven string vacío (no una excepción) cuando
+# no hay texto que extraer, así que un umbral bajo alcanza para distinguir.
+MIN_EMBEDDED_TEXT_CHARS = 40
+
+_markitdown = MarkItDown(enable_plugins=False)
+
+
+def extract_embedded_pdf_text(data: bytes) -> str | None:
+    """Intenta leer el texto ya embebido en el PDF (sin OCR). Devuelve None si
+    el PDF no tiene texto aprovechable (ej. escaneado) para que el caller
+    caiga al flujo de OCR."""
+    try:
+        result = _markitdown.convert_stream(
+            io.BytesIO(data), stream_info=StreamInfo(extension=".pdf")
+        )
+    except Exception:
+        return None
+
+    text = (getattr(result, "markdown", None) or getattr(result, "text_content", "") or "").strip()
+    if len(text) < MIN_EMBEDDED_TEXT_CHARS:
+        return None
+    return text
 
 # Se carga una sola vez al iniciar el contenedor — cargarlo por request sería
 # lentísimo (implica leer los pesos del modelo cada vez).
@@ -46,6 +72,11 @@ async def extract_text(file: UploadFile = File(...)):
         raise HTTPException(400, "Archivo vacío")
 
     is_pdf = (file.content_type == "application/pdf") or file.filename.lower().endswith(".pdf")
+
+    if is_pdf:
+        embedded_text = extract_embedded_pdf_text(data)
+        if embedded_text is not None:
+            return {"pages": [{"page": 1, "lines": [], "text": embedded_text}], "text": embedded_text}
 
     try:
         if is_pdf:

@@ -5,3 +5,4 @@ pillow>=10.0
 pymupdf>=1.19,<1.21.0
 onnxruntime>=1.16
 rapidocr>=2.0.0
+markitdown[pdf]>=0.1.0
