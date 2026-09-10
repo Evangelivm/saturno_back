@@ -22,7 +22,15 @@ app = FastAPI(title="Saturno OCR")
 # lang_type="latin" reproduce el mismo modelo de reconocimiento que usaba
 # PaddleOCR con lang="es" — PaddleOCR también enruta "es" al modelo
 # multilenguaje compartido "latin" (ver rec_model_dir=".../rec/latin/...").
-ocr = RapidOCR(params={"Rec.lang_type": "latin"})
+# Se fija ocr_version/model_type porque el default de esta librería (PP-OCRv6
+# "small") no tiene variante "latin" — solo existe para PP-OCRv5 "mobile".
+ocr = RapidOCR(
+    params={
+        "Rec.lang_type": "latin",
+        "Rec.ocr_version": "PP-OCRv5",
+        "Rec.model_type": "mobile",
+    }
+)
 
 
 def pdf_to_images(data: bytes) -> list[Image.Image]:
