@@ -6,3 +6,6 @@ pymupdf>=1.24.0
 onnxruntime>=1.16
 rapidocr>=2.0.0
 markitdown[pdf]>=0.1.0
+# NumPy >=2.0 PyPI wheels are built with an x86-64-v2 (SSE4.2/POPCNT) baseline;
+# this container's host CPU doesn't support it, causing a RuntimeError at import.
+numpy<2.0
